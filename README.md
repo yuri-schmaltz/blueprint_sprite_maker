@@ -16,14 +16,15 @@ Preview gerado a partir de uma execucao real do extrator sobre uma sprite sheet 
 
 ## Descricao
 
-O projeto agora funciona principalmente como um plugin do GIMP 3+ para detectar sprites na camada ativa e criar uma nova imagem com cada sprite em sua propria camada. O nucleo de deteccao continua em Python/OpenCV e o modo Qt standalone ainda permanece disponivel no repositorio.
+O projeto agora funciona principalmente como um plugin do GIMP 3+ para detectar sprites na camada ativa e criar uma nova imagem para cada sprite detectado. O nucleo de deteccao continua em Python/OpenCV e o modo Qt standalone ainda permanece disponivel no repositorio.
 
 ## Funcionalidades
 
 - Detecta sprites automaticamente a partir da camada selecionada
 - Reaproveita suporte a transparencia, rembg e upscale do motor atual
-- Gera uma nova imagem no GIMP com um sprite por camada
+- Gera uma nova imagem no GIMP para cada sprite detectado ou uma unica imagem com camadas
 - Permite ajustar threshold, area minima, layout e opcoes de IA
+- Abre uma tela inicial de configuracao antes da extracao no GIMP, com preview de deteccao e mascara
 
 ## Instalacao
 
@@ -79,7 +80,7 @@ Depois de reiniciar o GIMP, abra uma imagem com sprite sheet, selecione a camada
 Filtros > My Blueprint Maker > Extrair sprites para nova imagem
 ```
 
-O plugin cria uma nova imagem e adiciona uma camada para cada sprite detectado.
+O plugin abre uma tela inicial de configuracao com preview de deteccao e mascara. Ao concluir, voce pode gerar uma nova imagem separada para cada sprite detectado ou uma unica imagem com camadas.
 
 ### Parametros principais
 

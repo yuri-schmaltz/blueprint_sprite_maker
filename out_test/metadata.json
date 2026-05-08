@@ -1,0 +1,56 @@
+{
+  "sprites": [
+    {
+      "index": 0,
+      "view_type": "front",
+      "bbox": [
+        20,
+        20,
+        39,
+        39
+      ],
+      "file_name": "sprite_01.rgba",
+      "width": 39,
+      "height": 39
+    },
+    {
+      "index": 1,
+      "view_type": "back",
+      "bbox": [
+        71,
+        20,
+        48,
+        39
+      ],
+      "file_name": "sprite_02.rgba",
+      "width": 48,
+      "height": 39
+    },
+    {
+      "index": 2,
+      "view_type": "left",
+      "bbox": [
+        20,
+        71,
+        39,
+        48
+      ],
+      "file_name": "sprite_03.rgba",
+      "width": 39,
+      "height": 48
+    },
+    {
+      "index": 3,
+      "view_type": "right",
+      "bbox": [
+        71,
+        71,
+        48,
+        48
+      ],
+      "file_name": "sprite_04.rgba",
+      "width": 48,
+      "height": 48
+    }
+  ]
+}
