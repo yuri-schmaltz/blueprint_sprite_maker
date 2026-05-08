@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
+import sys
 from pathlib import Path
 
 
@@ -12,9 +14,11 @@ DEFAULT_GIMP_VERSION = "3.0"
 FILES_TO_COPY = [
     "my-blueprint-maker.py",
     "extrator_sprites_gimp.py",
+    "external_sprite_runner.py",
     "README.md",
     "requirements.txt",
 ]
+RUNTIME_CONFIG_FILENAME = "plugin_runtime_config.json"
 DIRECTORIES_TO_COPY = [
     "components",
     "core",
@@ -83,6 +87,13 @@ def collect_missing_items(repo_root: Path) -> list[str]:
     return missing_items
 
 
+def write_runtime_config(target_dir: Path) -> Path:
+    config_path = target_dir / RUNTIME_CONFIG_FILENAME
+    config = {"helper_python": sys.executable}
+    config_path.write_text(json.dumps(config, ensure_ascii=True, indent=2), encoding="utf-8")
+    return config_path
+
+
 def install_plugin(target_dir: Path, repo_root: Path | None = None) -> Path:
     repo_root = repo_root or get_repo_root()
     missing_items = collect_missing_items(repo_root)
@@ -101,6 +112,8 @@ def install_plugin(target_dir: Path, repo_root: Path | None = None) -> Path:
         if destination_dir.exists():
             shutil.rmtree(destination_dir)
         shutil.copytree(source_dir, destination_dir, ignore=IGNORED_NAMES)
+
+    write_runtime_config(target_dir)
 
     return target_dir
 

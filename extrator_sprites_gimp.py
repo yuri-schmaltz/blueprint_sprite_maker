@@ -3,8 +3,13 @@
 
 from __future__ import annotations
 
+import json
 from importlib import import_module
+from pathlib import Path
+import subprocess
 import sys
+import tempfile
+
 import gi
 
 gi.require_version("Gegl", "0.4")
@@ -15,6 +20,9 @@ from gi.repository import Gegl, Gimp, GObject
 
 PROCEDURE_NAME = "python-fu-my-blueprint-maker-extract-sprites"
 RGBA_FORMAT = "R'G'B'A u8"
+PLUGIN_DIR = Path(__file__).resolve().parent
+EXTERNAL_RUNNER_PATH = PLUGIN_DIR / "external_sprite_runner.py"
+RUNTIME_CONFIG_PATH = PLUGIN_DIR / "plugin_runtime_config.json"
 RUNTIME_DEPENDENCY_ERROR = (
     "As dependencias Python do plugin nao estao disponiveis para o Python do GIMP. "
     "Instale numpy e opencv-python no ambiente usado pelo GIMP."
@@ -27,6 +35,21 @@ def _show_error(message: str):
 
 def _choice_is_valid(value: str, allowed_values):
     return value in allowed_values
+
+
+def _load_runtime_config() -> dict:
+    if not RUNTIME_CONFIG_PATH.exists():
+        return {}
+    return json.loads(RUNTIME_CONFIG_PATH.read_text(encoding="utf-8"))
+
+
+def _load_pillow_image_module():
+    try:
+        return import_module("PIL.Image")
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "O plugin precisa do Pillow no Python do GIMP para usar o modo de execucao externo."
+        ) from exc
 
 
 def _load_runtime_dependencies():
@@ -47,6 +70,16 @@ def _drawable_to_bgra(drawable: Gimp.Drawable, cv2, np):
     src = drawable.get_buffer().get(rect, 1.0, RGBA_FORMAT, Gegl.AbyssPolicy.NONE)
     rgba = np.frombuffer(src, dtype=np.uint8).reshape((height, width, 4))
     return cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGRA)
+
+
+def _save_drawable_png(drawable: Gimp.Drawable, destination: Path):
+    pillow_image = _load_pillow_image_module()
+    width = drawable.get_width()
+    height = drawable.get_height()
+    rect = Gegl.Rectangle.new(0, 0, width, height)
+    rgba_bytes = drawable.get_buffer().get(rect, 1.0, RGBA_FORMAT, Gegl.AbyssPolicy.NONE)
+    image = pillow_image.frombytes("RGBA", (width, height), bytes(rgba_bytes), "raw", "RGBA")
+    image.save(destination)
 
 
 def _sprite_to_rgba(sprite_image, cv2):
@@ -87,6 +120,95 @@ def _create_result_image(source_image: Gimp.Image, sprites, cv2):
         layer_buffer.flush()
 
     return result_image
+
+
+def _create_result_image_from_exports(source_image: Gimp.Image, sprites, output_dir: Path):
+    pillow_image = _load_pillow_image_module()
+    min_x = min(sprite["bbox"][0] for sprite in sprites)
+    min_y = min(sprite["bbox"][1] for sprite in sprites)
+    max_x = max(sprite["bbox"][0] + sprite["bbox"][2] for sprite in sprites)
+    max_y = max(sprite["bbox"][1] + sprite["bbox"][3] for sprite in sprites)
+
+    result_image = Gimp.Image.new(max_x - min_x, max_y - min_y, Gimp.ImageBaseType.RGB)
+
+    for index, sprite in enumerate(sprites):
+        sprite_path = output_dir / sprite["file_name"]
+        with pillow_image.open(sprite_path) as sprite_image:
+            rgba = sprite_image.convert("RGBA")
+            width, height = rgba.size
+            layer_name = f"{index + 1:02d}_{sprite['view_type']}"
+            layer = Gimp.Layer.new(
+                result_image,
+                layer_name,
+                width,
+                height,
+                Gimp.ImageType.RGBA_IMAGE,
+                100.0,
+                result_image.get_default_new_layer_mode(),
+            )
+            result_image.insert_layer(layer, None, index)
+            layer.set_offsets(sprite["bbox"][0] - min_x, sprite["bbox"][1] - min_y)
+
+            rect = Gegl.Rectangle.new(0, 0, width, height)
+            layer_buffer = layer.get_buffer()
+            layer_buffer.set(rect, RGBA_FORMAT, rgba.tobytes())
+            layer_buffer.flush()
+
+    return result_image
+
+
+def _run_external_extraction(image: Gimp.Image, drawable: Gimp.Drawable, config):
+    runtime_config = _load_runtime_config()
+    helper_python = Path(runtime_config.get("helper_python", ""))
+
+    if not helper_python.exists():
+        raise RuntimeError(
+            "Nao foi encontrado um Python externo configurado para executar a extracao. "
+            "Reinstale o plugin pelo repositorio para atualizar plugin_runtime_config.json."
+        )
+    if not EXTERNAL_RUNNER_PATH.exists():
+        raise RuntimeError("O helper externo do plugin nao foi encontrado na pasta instalada.")
+
+    with tempfile.TemporaryDirectory(prefix="my_blueprint_maker_") as temp_dir_str:
+        temp_dir = Path(temp_dir_str)
+        input_path = temp_dir / "input.png"
+        output_dir = temp_dir / "output"
+        _save_drawable_png(drawable, input_path)
+
+        command = [
+            str(helper_python),
+            str(EXTERNAL_RUNNER_PATH),
+            "--input",
+            str(input_path),
+            "--output-dir",
+            str(output_dir),
+            "--threshold",
+            str(int(config.get_property("threshold"))),
+            "--min-area",
+            str(int(config.get_property("min-area"))),
+            "--layout-hint",
+            (config.get_property("layout-hint") or "").strip().lower(),
+            "--upscale",
+            (config.get_property("upscale") or "none").strip().lower(),
+        ]
+        if bool(config.get_property("remove-bg")):
+            command.append("--remove-bg")
+
+        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+        if completed.returncode != 0:
+            details = (completed.stderr or completed.stdout or "").strip()
+            raise RuntimeError(details or "A execucao externa do extrator falhou.")
+
+        metadata_path = output_dir / "metadata.json"
+        if not metadata_path.exists():
+            raise RuntimeError("A execucao externa nao gerou metadata.json.")
+
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        sprites = metadata.get("sprites", [])
+        if not sprites:
+            return None
+
+        return _create_result_image_from_exports(image, sprites, output_dir)
 
 
 class BlueprintMakerGimpPlugin(Gimp.PlugIn):
@@ -179,18 +301,23 @@ class BlueprintMakerGimpPlugin(Gimp.PlugIn):
                 remove_bg=bool(config.get_property("remove-bg")),
                 upscale=upscale,
             )
+            if not sprites:
+                _show_error("Nenhum sprite foi detectado com os parametros atuais.")
+                return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
+
+            result_image = _create_result_image(image, sprites, cv2)
+        except RuntimeError:
+            try:
+                result_image = _run_external_extraction(image, drawables[0], config)
+            except Exception as exc:
+                _show_error(f"Falha ao processar a camada: {exc}")
+                return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
+
+            if result_image is None:
+                _show_error("Nenhum sprite foi detectado com os parametros atuais.")
+                return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
         except Exception as exc:
             _show_error(f"Falha ao processar a camada: {exc}")
-            return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
-
-        if not sprites:
-            _show_error("Nenhum sprite foi detectado com os parametros atuais.")
-            return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
-
-        try:
-            result_image = _create_result_image(image, sprites, cv2)
-        except Exception as exc:
-            _show_error(f"Falha ao criar a imagem de saida: {exc}")
             return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
 
         if bool(config.get_property("open-result")) and Gimp.Display.name() is not None:

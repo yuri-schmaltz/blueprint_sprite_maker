@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import install_gimp_plugin
@@ -28,6 +29,7 @@ def test_collect_missing_items_detects_absent_entries(tmp_path):
 
     assert "my-blueprint-maker.py" in missing
     assert "extrator_sprites_gimp.py" in missing
+    assert "external_sprite_runner.py" in missing
     assert "core" in missing
 
 
@@ -52,6 +54,11 @@ def test_install_plugin_copies_required_structure(tmp_path):
     assert installed_dir == target_dir
     for file_name in install_gimp_plugin.FILES_TO_COPY:
         assert (target_dir / file_name).exists()
+
+    runtime_config = json.loads(
+        (target_dir / install_gimp_plugin.RUNTIME_CONFIG_FILENAME).read_text(encoding="utf-8")
+    )
+    assert runtime_config["helper_python"]
 
     for dir_name in install_gimp_plugin.DIRECTORIES_TO_COPY:
         assert (target_dir / dir_name / "sample.txt").exists()
