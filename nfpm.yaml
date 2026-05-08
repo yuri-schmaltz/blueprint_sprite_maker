@@ -7,8 +7,8 @@ priority: "optional"
 maintainer: "Yuri Schmaltz"
 description: "Sprite Extraction and AI manipulation tool"
 vendor: "Yuri Schmaltz"
-homepage: "https://github.com/yuri-schmaltz/my-blueprint-maker"
-license: "MIT"
+homepage: "https://github.com/yuri-schmaltz/blueprint_plugin"
+license: "GPL-3.0-only"
 contents:
   - src: ./dist/my-blueprint-maker-bin
     dst: /usr/bin/my-blueprint-maker

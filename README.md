@@ -4,8 +4,15 @@
 ![GIMP 3+](https://img.shields.io/badge/GIMP-3%2B-5C554A?style=flat-square)
 ![OpenCV](https://img.shields.io/badge/OpenCV-image%20processing-1E6B52?style=flat-square)
 ![Plugin](https://img.shields.io/badge/Plugin-GIMP-8C4A2F?style=flat-square)
+![GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-3A5A98?style=flat-square)
 
 Plugin para GIMP 3+ com reaproveitamento do extrator de sprites original do projeto.
+
+## Preview
+
+![Preview do fluxo de extracao](docs/assets/preview.png)
+
+Preview gerado a partir de uma execucao real do extrator sobre uma sprite sheet sintetica, mostrando a entrada e o recorte produzido pelo fluxo atual.
 
 ## Descricao
 
@@ -130,7 +137,7 @@ O menu nao aparece no GIMP:
 
 ## Licenca
 
-Este projeto é fornecido como está, para uso livre.
+Distribuido sob a licenca GPL-3.0. Consulte o arquivo LICENSE para os termos completos.
 
 ## Autor
 

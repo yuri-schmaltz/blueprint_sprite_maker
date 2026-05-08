@@ -7,7 +7,7 @@ name = "my-blueprint-maker"
 version = "1.1.0"
 description = "Ferramenta para extrair sprites de sprite sheets em modo standalone ou como plugin do GIMP 3+"
 readme = "README.md"
-license = "MIT"
+license = "GPL-3.0-only"
 requires-python = ">=3.8"
 authors = [
     { name = "Antigravity" }
@@ -36,8 +36,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yuri-schmaltz/my-blueprint-maker"
-Repository = "https://github.com/yuri-schmaltz/my-blueprint-maker"
+Homepage = "https://github.com/yuri-schmaltz/blueprint_plugin"
+Repository = "https://github.com/yuri-schmaltz/blueprint_plugin"
 
 [project.scripts]
 my-blueprint-maker = "main:main"
