@@ -1,5 +1,10 @@
 # My Blueprint Maker
 
+![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-2F5D8C?style=flat-square)
+![GIMP 3+](https://img.shields.io/badge/GIMP-3%2B-5C554A?style=flat-square)
+![OpenCV](https://img.shields.io/badge/OpenCV-image%20processing-1E6B52?style=flat-square)
+![Plugin](https://img.shields.io/badge/Plugin-GIMP-8C4A2F?style=flat-square)
+
 Plugin para GIMP 3+ com reaproveitamento do extrator de sprites original do projeto.
 
 ## Descricao
@@ -45,7 +50,9 @@ No Windows, o caminho mais comum e:
 
 O instalador agora tenta detectar automaticamente a versao de perfil mais recente, como 3.0 ou 3.2.
 
-3. Garanta que os arquivos my-blueprint-maker.py e extrator_sprites_gimp.py estejam dentro dessa pasta junto com os pacotes core, components e gui.
+3. Garanta que os arquivos my-blueprint-maker.py, extrator_sprites_gimp.py e external_sprite_runner.py estejam dentro dessa pasta junto com os pacotes core, components e gui.
+
+Se o Python do GIMP nao tiver numpy/opencv disponiveis, o plugin usa automaticamente o Python externo configurado durante a instalacao para executar a extracao.
 
 4. Reinicie o GIMP.
 
@@ -119,6 +126,7 @@ O menu nao aparece no GIMP:
 - Confirme que o plugin foi instalado no perfil ativo do GIMP, por exemplo %APPDATA%/GIMP/3.2/plug-ins/my-blueprint-maker
 - Confirme que os arquivos my-blueprint-maker.py e extrator_sprites_gimp.py estao em uma pasta de plugins lida pelo GIMP
 - Verifique se as dependencias Python do projeto estao disponiveis para o Python embutido do GIMP
+- Se numpy/opencv nao estiverem disponiveis no Python do GIMP, reinstale o plugin a partir do repositorio para atualizar o arquivo plugin_runtime_config.json com o Python externo correto
 
 ## Licenca
 
