@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "my-blueprint-maker"
+version = "1.1.0"
+description = "Ferramenta para extrair sprites de sprite sheets em modo standalone ou como plugin do GIMP 3+"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [
+    { name = "Antigravity" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "PyQt6",
+    "opencv-python",
+    "numpy",
+    "Pillow",
+    "PyOpenGL",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pyinstaller",
+]
+
+[project.urls]
+Homepage = "https://github.com/yuri-schmaltz/my-blueprint-maker"
+Repository = "https://github.com/yuri-schmaltz/my-blueprint-maker"
+
+[project.scripts]
+my-blueprint-maker = "main:main"
+my-blueprint-maker-install-gimp = "install_gimp_plugin:main"
+
+[tool.setuptools]
+py-modules = ["main", "extrator_sprites_gimp", "install_gimp_plugin"]
+packages = ["components", "core", "gui"]
