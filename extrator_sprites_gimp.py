@@ -310,7 +310,7 @@ def _schedule_preview_refresh(state: dict, build_params, drawable: Gimp.Drawable
                 state["preview_info_label"],
                 state["preview_hint_label"],
             )
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError) as exc:
             _show_error(f"Falha ao gerar preview: {exc}")
             state["preview_info_label"].set_text("Falha ao atualizar preview.")
         finally:
@@ -751,14 +751,14 @@ class BlueprintMakerGimpPlugin(Gimp.PlugIn):
         except RuntimeError:
             try:
                 result_images = _run_external_extraction(image, drawables[0], config)
-            except Exception as exc:
+            except (RuntimeError, OSError, ValueError) as exc:
                 _show_error(f"Falha ao processar a camada: {exc}")
                 return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
 
             if not result_images:
                 _show_error("Nenhum sprite foi detectado com os parametros atuais.")
                 return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError) as exc:
             _show_error(f"Falha ao processar a camada: {exc}")
             return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
 

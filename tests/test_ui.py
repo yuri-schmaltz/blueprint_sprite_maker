@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip("PyQt6")
 from PyQt6.QtCore import Qt
 from gui.main_window import MainWindow
 from components.detection_controls import DetectionControls

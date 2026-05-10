@@ -1,7 +1,7 @@
 import logging
 import cv2
 from pathlib import Path
-from core.sprite_extractor import SpriteExtractor
+from core.sprite_extractor import SpriteExtractor, ImageLoadError
 from core.i18n import tr
 import PyQt6.QtCore as QtCore
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -43,35 +43,31 @@ class AIBatchWorker(QThread):
                 
             try:
                 temp_extractor = SpriteExtractor()
-                if temp_extractor.load_image(str(img_file)):
-                    sprites = temp_extractor.detect_sprites(
-                        threshold=self.threshold, 
-                        min_area=self.min_area, 
-                        remove_bg=self.remove_bg,
-                        upscale=self.upscale,
-                        progress_callback=lambda msg: self.log_update.emit(f"⏳ {img_file.name}: {msg}")
+                temp_extractor.load_image(str(img_file))
+                sprites = temp_extractor.detect_sprites(
+                    threshold=self.threshold, 
+                    min_area=self.min_area,
+                    remove_bg=self.remove_bg,
+                    upscale=self.upscale,
+                    progress_callback=lambda msg: self.log_update.emit(f"⏳ {img_file.name}: {msg}")
+                )
+                
+                if sprites:
+                    temp_extractor.export_sprites(
+                        output_dir=self.output_path,
+                        prefix=f"{self.prefix_base}{i+1:0{self.padding}d}" if self.uniform else img_file.stem,
                     )
-            
-                    if sprites:
-                        sheet_name = img_file.stem
-                        final_prefix = f"{self.prefix_base}_{sheet_name}"
-                        
-                        temp_extractor.export_sprites(
-                            output_dir=str(self.output_path),
-                            prefix=final_prefix,
-                            padding=self.padding,
-                            uniform_size=self.uniform
-                        )
-                        processed_count += 1
-                        self.log_update.emit(f"✅ {img_file.name} -> {len(sprites)} sprites")
-                    else:
-                        self.log_update.emit(f"⚠️ {img_file.name}: Nenhum sprite detectado")
+                    processed_count += 1
+                    self.log_update.emit(f"✅ {img_file.name} -> {len(sprites)} sprites")
                 else:
-                    self.log_update.emit(f"❌ Erro ao carregar: {img_file.name}")
+                    self.log_update.emit(f"⚠️ {img_file.name}: Nenhum sprite detectado")
+            except ImageLoadError as e:
+                self.log_update.emit(f"❌ Erro ao carregar: {img_file.name}")
+                logger.warning("Batch: falha no load_image %s: %s", img_file.name, e)
             except (cv2.error, ValueError) as e:
                 self.log_update.emit(f"❌ Falha em {img_file.name}: {str(e)}")
                 logger.warning("Batch: falha ao processar %s: %s", img_file.name, e)
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 self.log_update.emit(f"❌ Falha inesperada em {img_file.name}: {str(e)}")
                 logger.error("Batch: erro inesperado em %s: %s", img_file.name, e, exc_info=True)
             

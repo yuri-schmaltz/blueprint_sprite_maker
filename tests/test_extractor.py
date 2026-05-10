@@ -11,14 +11,14 @@ class TestSpriteExtractor:
     
     def test_load_image_success(self, extractor, sample_sprite_sheet_path):
         """Test loading a valid image"""
-        result = extractor.load_image(sample_sprite_sheet_path)
-        assert result is True
+        extractor.load_image(sample_sprite_sheet_path)
         assert extractor.original_image is not None
     
     def test_load_image_invalid_path(self, extractor):
         """Test loading a non-existent file"""
-        result = extractor.load_image("/nonexistent/path.png")
-        assert result is False
+        from core.sprite_extractor import ImageLoadError
+        with pytest.raises(ImageLoadError):
+            extractor.load_image("/nonexistent/path.png")
     
     def test_detect_sprites_finds_all(self, extractor, sample_sprite_sheet_path):
         """Test that detection finds all 4 sprites in a 2x2 grid"""

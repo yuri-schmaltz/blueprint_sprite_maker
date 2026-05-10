@@ -119,6 +119,10 @@ SORT_ROW_QUANTIZE_PX = 50
 # Tamanho da amostra nos cantos para detectar se o fundo é claro ou escuro.
 CORNER_SAMPLE_SIZE = 10
 
+class ImageLoadError(Exception):
+    """Exceção levantada quando há falha no carregamento ou decodificação de imagem."""
+    pass
+
 
 @dataclass
 class Sprite:
@@ -161,25 +165,26 @@ class SpriteExtractor:
         self._last_binary_mask: Optional[np.ndarray] = None
         self.upscaler = DNNUpscaler()
         
-    def load_image(self, path: str) -> bool:
+    def load_image(self, path: str) -> None:
         """Carrega uma imagem e limpa estados anteriores.
 
         Args:
             path: Caminho absoluto ou relativo para o arquivo de imagem.
 
-        Returns:
-            True se a imagem foi carregada com sucesso, False caso contrário.
+        Raises:
+            ImageLoadError: Se o arquivo não existir, não puder ser decodificado,
+                ou ocorrer um erro de IO/OpenCV durante o carregamento.
         """
         try:
             self.image_path = Path(path)
             if not self.image_path.exists():
                 logger.warning("Arquivo não encontrado: %s", path)
-                return False
+                raise ImageLoadError(f"Arquivo não encontrado: {path}")
 
             self.original_image = cv2.imread(str(self.image_path), cv2.IMREAD_UNCHANGED)
             if self.original_image is None:
                 logger.warning("OpenCV não conseguiu decodificar: %s", path)
-                return False
+                raise ImageLoadError(f"Formato de imagem não suportado ou arquivo corrompido: {path}")
             
             # Garantir 4 canais (BGRA) para consistência interna
             if len(self.original_image.shape) == 2:
@@ -192,10 +197,9 @@ class SpriteExtractor:
             self.sprites = []
             logger.info("Imagem carregada: %s (%dx%d)", path, 
                         self.original_image.shape[1], self.original_image.shape[0])
-            return True
         except (cv2.error, OSError) as e:
             logger.error("Falha ao carregar imagem %s: %s", path, e, exc_info=True)
-            return False
+            raise ImageLoadError(f"Falha de sistema ao carregar imagem: {e}") from e
     
     def apply_ai_features(self, remove_bg=False, upscale="none", progress_callback=None):
         """Aplica processamento de IA (rembg e/ou upscale).

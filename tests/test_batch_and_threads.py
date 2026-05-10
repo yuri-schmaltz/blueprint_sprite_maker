@@ -47,7 +47,8 @@ class TestBatchProcessingCore:
         processed = 0
         for name, path in images.items():
             extractor = SpriteExtractor()
-            if extractor.load_image(path):
+            try:
+                extractor.load_image(path)
                 sprites = extractor.detect_sprites(threshold=10, min_area=100)
                 if sprites:
                     extractor.export_sprites(
@@ -55,6 +56,8 @@ class TestBatchProcessingCore:
                         prefix=f"batch_{Path(path).stem}",
                     )
                     processed += 1
+            except Exception:
+                pass
         
         assert processed == 3
         # Verificar que arquivos foram criados
@@ -72,10 +75,14 @@ class TestBatchProcessingCore:
         results = []
         all_paths = list(images.values()) + [str(bad_path)]
         
+        from core.sprite_extractor import ImageLoadError
         for path in all_paths:
             extractor = SpriteExtractor()
-            success = extractor.load_image(path)
-            results.append(success)
+            try:
+                extractor.load_image(path)
+                results.append(True)
+            except ImageLoadError:
+                results.append(False)
         
         # 3 válidas + 1 inválida
         assert results.count(True) == 3

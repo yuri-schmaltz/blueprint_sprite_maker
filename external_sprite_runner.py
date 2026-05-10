@@ -115,7 +115,7 @@ def main() -> int:
     extractor = SpriteExtractor()
     try:
         extractor.original_image = _rgba_file_to_bgra_image(args.input, args.width, args.height)
-    except Exception as exc:
+    except (ValueError, IOError, OSError) as exc:
         print(f"Falha ao carregar imagem de entrada: {exc}", file=sys.stderr)
         return 1
 

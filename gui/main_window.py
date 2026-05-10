@@ -21,7 +21,7 @@ import cv2
 
 logger = logging.getLogger(__name__)
 
-from core.sprite_extractor import SpriteExtractor
+from core.sprite_extractor import SpriteExtractor, ImageLoadError
 from components.image_viewer import ImageViewer
 from components.detection_controls import DetectionControls
 from components.sprite_list import SpriteList
@@ -73,7 +73,7 @@ class AIDetectionWorker(QThread):
                 "processed_image": worker_extractor.processed_image,
                 "binary_mask": worker_extractor.get_binary_mask_preview(),
             })
-        except Exception as e:
+        except (cv2.error, ValueError, RuntimeError, OSError) as e:
             logger.error("Falha na detecção de sprites: %s", e, exc_info=True)
             self.error.emit(str(e))
 
@@ -263,14 +263,15 @@ class MainWindow(QMainWindow):
             file_path, _ = QFileDialog.getOpenFileName(self, tr("select_image_title"), self.last_dir, tr("image_filters"))
         
         if file_path:
-            self.last_dir = str(Path(file_path).parent)
-            self.settings.setValue("last_dir", self.last_dir)
-            if self.extractor.load_image(file_path):
+            try:
+                self.last_dir = str(Path(file_path).parent)
+                self.settings.setValue("last_dir", self.last_dir)
+                self.extractor.load_image(file_path)
                 self.watcher.addPath(str(file_path))
                 self.detect_sprites()
                 self.detection_controls.detect_btn.setEnabled(True)
-            else:
-                QMessageBox.critical(self, "Erro", "Falha ao carregar a imagem")
+            except ImageLoadError as e:
+                QMessageBox.critical(self, "Erro", str(e))
 
     def detect_sprites(self):
         if self.extractor.original_image is None:
@@ -362,10 +363,13 @@ class MainWindow(QMainWindow):
             self.update_display()
 
     def on_file_updated(self, path):
-        if self.extractor.load_image(path):
+        try:
+            self.extractor.load_image(path)
             self.detect_sprites()
             if self.tabs.currentIndex() == 2:
                 self.sync_3d_preview()
+        except ImageLoadError as e:
+            logger.warning("Falha silenciosa ao recarregar %s: %s", path, e)
 
     def on_tab_changed(self, index):
         if index == 2: # 3D
@@ -413,9 +417,9 @@ class MainWindow(QMainWindow):
             )
             
             box = QMessageBox(self)
-            box.setWindowTitle(tr("msg_success"))
-            box.setText(tr("msg_export_success", len(self.extractor.sprites), str(output_dir)))
             box.setIcon(QMessageBox.Icon.Information)
+            box.setWindowTitle(tr("msg_success"))
+            box.setText(f"{len(self.extractor.sprites)} sprites exportados para:\n{output_dir}")
             
             open_folder_btn = box.addButton("📂 Abrir Pasta", QMessageBox.ButtonRole.ActionRole)
             box.addButton(QMessageBox.StandardButton.Ok)
