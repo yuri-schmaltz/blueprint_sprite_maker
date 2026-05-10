@@ -30,29 +30,35 @@ from components.batch_processor import BatchProcessor
 class AIDetectionWorker(QThread):
     """Worker thread para detecção de sprites com IA.
 
-    NOTA DE THREAD SAFETY:
-        Este worker recebe uma referência ao SpriteExtractor da MainWindow.
-        A UI é desabilitada durante a execução para prevenir acesso concorrente.
-        Se no futuro precisarmos de detecções concorrentes, o extractor
-        deverá ser clonado ou protegido por mutex.
+    Thread Safety (Isolation by Copy):
+        O worker recebe uma CÓPIA da imagem original e cria seu próprio
+        SpriteExtractor isolado. Nenhum estado mutável é compartilhado
+        com a main thread. Os resultados (sprites, processed_image,
+        binary_mask) são enviados de volta via signal e aplicados ao
+        extractor principal apenas na main thread.
     """
-    finished = pyqtSignal(list)
+    finished = pyqtSignal(object)  # dict com sprites + state
     error = pyqtSignal(str)
     status_update = pyqtSignal(str)
 
-    def __init__(self, extractor, params):
+    def __init__(self, image_copy, params):
         super().__init__()
-        self.extractor = extractor
+        self.image_copy = image_copy  # Deep copy — sem referência compartilhada
         self.params = params
 
     def run(self):
         try:
+            # Criar extractor isolado na worker thread
+            worker_extractor = SpriteExtractor()
+            worker_extractor.original_image = self.image_copy
+            worker_extractor.processed_image = self.image_copy.copy()
+
             layout_hint = None
             if "3x2" in self.params["layout_hint"]: layout_hint = "3x2"
             elif "2x3" in self.params["layout_hint"]: layout_hint = "2x3"
             elif "2x2" in self.params["layout_hint"]: layout_hint = "2x2"
             
-            sprites = self.extractor.detect_sprites(
+            sprites = worker_extractor.detect_sprites(
                 threshold=self.params["threshold"], 
                 min_area=self.params["min_area"], 
                 layout_hint=layout_hint,
@@ -60,7 +66,13 @@ class AIDetectionWorker(QThread):
                 upscale=self.params.get("upscale", "none"),
                 progress_callback=lambda msg: self.status_update.emit(msg)
             )
-            self.finished.emit(sprites)
+
+            # Emitir resultados completos para a main thread sincronizar
+            self.finished.emit({
+                "sprites": sprites,
+                "processed_image": worker_extractor.processed_image,
+                "binary_mask": worker_extractor.get_binary_mask_preview(),
+            })
         except Exception as e:
             logger.error("Falha na detecção de sprites: %s", e, exc_info=True)
             self.error.emit(str(e))
@@ -266,21 +278,38 @@ class MainWindow(QMainWindow):
             
         params = self.detection_controls.get_values()
         
-        # Desabilitar UI e mostrar carregamento
+        # Desabilitar UI durante processamento — barreira de thread safety
         self.detection_controls.setEnabled(False)
+        self.load_btn.setEnabled(False)
         self.detection_controls.detect_btn.setText("Processando...")
         self.sprite_list.clear()
         
-        # Iniciar Thread de Processamento
-        self.worker = AIDetectionWorker(self.extractor, params)
+        # Deep copy da imagem para o worker — isolamento completo de estado
+        image_copy = self.extractor.original_image.copy()
+        
+        # Iniciar Thread de Processamento com dados isolados
+        self.worker = AIDetectionWorker(image_copy, params)
         self.worker.finished.connect(self.on_detection_finished)
         self.worker.error.connect(self.on_detection_error)
         self.worker.status_update.connect(lambda msg: self.detection_controls.detect_btn.setText(msg))
         self.worker.start()
 
-    def on_detection_finished(self, sprites):
+    def on_detection_finished(self, result):
+        """Sincroniza os resultados do worker de volta ao extractor principal.
+        
+        Este método roda na main thread — é seguro acessar o extractor aqui.
+        """
+        # Restaurar UI
         self.detection_controls.detect_btn.setText(tr("btn_detect_sprites"))
         self.detection_controls.setEnabled(True)
+        self.load_btn.setEnabled(True)
+        
+        # Sincronizar estado do worker para o extractor principal (main thread only)
+        sprites = result["sprites"]
+        self.extractor.sprites = sprites
+        self.extractor.processed_image = result["processed_image"]
+        self.extractor._last_binary_mask = result["binary_mask"]
+        
         self.sprite_list.update_list(sprites, self.selected_sprite_index)
         self.update_display()
         self.export_btn.setEnabled(len(sprites) > 0)
@@ -288,6 +317,7 @@ class MainWindow(QMainWindow):
     def on_detection_error(self, err_msg):
         self.detection_controls.detect_btn.setText(tr("btn_detect_sprites"))
         self.detection_controls.setEnabled(True)
+        self.load_btn.setEnabled(True)
         QMessageBox.critical(self, tr("msg_error"), f"Erro no processamento: {err_msg}")
 
     def update_display(self):
