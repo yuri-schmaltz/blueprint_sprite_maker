@@ -29,7 +29,7 @@ RUNTIME_DEPENDENCY_ERROR = (
     "As dependencias Python do plugin nao estao disponiveis para o Python do GIMP. "
     "Instale numpy e opencv-python no ambiente usado pelo GIMP."
 )
-PREVIEW_MAX_SIZE = 480
+PREVIEW_MAX_SIZE = 440
 
 
 def _show_error(message: str):
@@ -388,6 +388,7 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     dialog.add_button("_Extrair", Gtk.ResponseType.OK)
     dialog.set_default_response(Gtk.ResponseType.OK)
     dialog.set_default_size(760, 620)
+    dialog.set_resizable(False)
 
     content_area = dialog.get_content_area()
     content_area.set_spacing(12)
@@ -497,16 +498,10 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     preview_hint_label.set_line_wrap(True)
     preview_box.pack_start(preview_hint_label, False, False, 0)
 
-    preview_scroller = Gtk.ScrolledWindow()
-    preview_scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-    preview_scroller.set_hexpand(True)
-    preview_scroller.set_vexpand(True)
-    preview_box.pack_start(preview_scroller, True, True, 0)
-
     preview_image_widget = Gtk.Image()
     preview_image_widget.set_hexpand(True)
     preview_image_widget.set_vexpand(True)
-    preview_scroller.add_with_viewport(preview_image_widget)
+    preview_box.pack_start(preview_image_widget, True, True, 0)
 
     preview_info_label = Gtk.Label(label="Nenhuma preview gerada ainda.", xalign=0.0)
     preview_box.pack_start(preview_info_label, False, False, 0)
