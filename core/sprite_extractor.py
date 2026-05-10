@@ -325,13 +325,26 @@ class SpriteExtractor:
         # Encontrar contornos
         contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        # Extrair bounding boxes
-        bboxes = []
+        # Pré-processar contornos para criar filtro adaptativo
+        valid_contours = []
         for contour in contours:
             area = cv2.contourArea(contour)
             if area >= min_area:
-                x, y, w, h = cv2.boundingRect(contour)
-                bboxes.append((x, y, w, h))
+                valid_contours.append((contour, area))
+                
+        bboxes = []
+        if valid_contours:
+            # Heurística: Encontrar o maior objeto para detectar "poeira/textos"
+            max_area = max(area for _, area in valid_contours)
+            
+            # Objetos de blueprint são massivos. Ruídos (texto) são tipicamente < 2% do tamanho do objeto principal.
+            # Este threshold dinâmico ignora rótulos de texto sem que o usuário precise ajustar a UI.
+            adaptive_min_area = max(min_area, max_area * 0.02)
+            
+            for contour, area in valid_contours:
+                if area >= adaptive_min_area:
+                    x, y, w, h = cv2.boundingRect(contour)
+                    bboxes.append((x, y, w, h))
         
         # Ordenar bounding boxes: primeiro por Y (linha quantizada), depois por X (coluna)
         bboxes.sort(key=lambda b: (round(b[1] / SORT_ROW_QUANTIZE_PX) * SORT_ROW_QUANTIZE_PX, b[0]))

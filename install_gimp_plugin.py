@@ -7,6 +7,8 @@ import json
 import shutil
 import sys
 import platform
+import os
+import stat
 from pathlib import Path
 
 
@@ -128,7 +130,11 @@ def install_plugin(target_dir: Path, repo_root: Path | None = None) -> Path:
     target_dir.mkdir(parents=True, exist_ok=True)
 
     for file_name in FILES_TO_COPY:
-        shutil.copy2(repo_root / file_name, target_dir / file_name)
+        dest_file = target_dir / file_name
+        shutil.copy2(repo_root / file_name, dest_file)
+        # No Linux/Mac, o GIMP exige que o arquivo Python tenha permissão de execução
+        if dest_file.suffix == ".py" and platform.system() != "Windows":
+            os.chmod(dest_file, dest_file.stat().st_mode | stat.S_IEXEC)
 
     for dir_name in DIRECTORIES_TO_COPY:
         source_dir = repo_root / dir_name
