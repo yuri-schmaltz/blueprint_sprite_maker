@@ -13,14 +13,14 @@ def test_i18n_load_default_locale():
     i18n = I18nManager()
     i18n.set_locale("en_US")
     assert i18n._current_locale == "en_US"
-    assert i18n._translations.get("app_title") == "My Blueprint Maker"
+    assert i18n._translations.get("app_title") == "Blueprint Maker"
 
 def test_i18n_load_pt_br_locale():
     """Test loading Portuguese locale."""
     i18n = I18nManager()
     i18n.set_locale("pt_BR")
     assert i18n._current_locale == "pt_BR"
-    assert i18n._translations.get("app_title") == "My Blueprint Maker"
+    assert i18n._translations.get("app_title") == "Blueprint Maker"
     assert i18n._translations.get("tab_individual") == "Extrator Individual"
 
 def test_tr_function_existing_key():

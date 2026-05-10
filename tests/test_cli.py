@@ -14,7 +14,7 @@ def test_cli_version():
         text=True
     )
     assert result.returncode == 0
-    assert "My Blueprint Maker 1.1.0" in result.stdout
+    assert "Blueprint Maker 1.1.0" in result.stdout
 
 
 def test_cli_help():

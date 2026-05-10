@@ -9,9 +9,9 @@ import argparse
 
 def main():
     """Função principal"""
-    parser = argparse.ArgumentParser(description="My Blueprint Maker - Extrator de Sprites para Projetos 3D")
+    parser = argparse.ArgumentParser(description="Blueprint Maker - Extrator de Sprites para Projetos 3D")
     parser.add_argument("path", nargs="?", help="Caminho para o sprite sheet")
-    parser.add_argument("--version", action="version", version="My Blueprint Maker 1.1.0")
+    parser.add_argument("--version", action="version", version="Blueprint Maker 1.1.0")
     args = parser.parse_args()
 
     from PyQt6.QtWidgets import QApplication

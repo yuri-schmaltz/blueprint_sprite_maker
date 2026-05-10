@@ -11,7 +11,7 @@ def test_main_window_init(qtbot):
     """Test if main window can be instantiated without errors."""
     window = MainWindow()
     qtbot.addWidget(window)
-    assert window.windowTitle() == "My Blueprint Maker"
+    assert window.windowTitle() == "Blueprint Maker"
     assert window.extractor is not None
 
 def test_detection_controls_values(qtbot):

@@ -381,7 +381,7 @@ def _run_external_preview(drawable: Gimp.Drawable, params: dict, preview_kind: s
 
 
 def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
-    dialog = Gtk.Dialog(title="My Blueprint Maker", modal=True)
+    dialog = Gtk.Dialog(title="Blueprint Maker", modal=True)
     dialog.add_button("_Cancelar", Gtk.ResponseType.CANCEL)
     dialog.add_button("Preview deteccao", 1001)
     dialog.add_button("Preview mascara", 1002)
@@ -638,7 +638,7 @@ class BlueprintMakerGimpPlugin(Gimp.PlugIn):
         procedure = Gimp.ImageProcedure.new(self, name, Gimp.PDBProcType.PLUGIN, self.run, None)
         procedure.set_image_types("*")
         procedure.set_menu_label("Extrair sprites para nova imagem")
-        procedure.add_menu_path("<Image>/Filters/My Blueprint Maker")
+        procedure.add_menu_path("<Image>/Filters/Blueprint Maker")
         procedure.set_documentation(
             "Detecta sprites na camada ativa e cria uma nova imagem para cada sprite detectado.",
             "Usa o motor de deteccao existente do projeto para gerar uma imagem separada no GIMP para cada sprite identificado.",

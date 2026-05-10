@@ -10,6 +10,16 @@ class I18nManager:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(I18nManager, cls).__new__(cls)
+            
+            # Detect system language automatically
+            import locale
+            try:
+                system_locale, _ = locale.getdefaultlocale()
+                if system_locale:
+                    cls._current_locale = system_locale
+            except Exception:
+                pass
+                
             cls._instance._load_translations()
         return cls._instance
 
@@ -18,7 +28,15 @@ class I18nManager:
         locale_path = locales_dir / f"{self._current_locale}.json"
         
         if not locale_path.exists():
-            # Fallback to en_US if pt_BR is missing, or vice versa
+            # Tenta pegar apenas o prefixo do idioma (ex: 'es' de 'es_AR' -> tenta 'es_ES')
+            base_lang = self._current_locale.split("_")[0]
+            for file in locales_dir.glob(f"{base_lang}_*.json"):
+                locale_path = file
+                self._current_locale = file.stem
+                break
+                
+        if not locale_path.exists():
+            # Fallback final para en_US
             self._current_locale = "en_US"
             locale_path = locales_dir / "en_US.json"
 
