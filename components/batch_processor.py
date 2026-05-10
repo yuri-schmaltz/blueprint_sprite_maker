@@ -1,3 +1,5 @@
+import logging
+import cv2
 from pathlib import Path
 from core.sprite_extractor import SpriteExtractor
 from core.i18n import tr
@@ -7,10 +9,17 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QGroupBox, QFormLayou
                              QPushButton, QLineEdit, QCheckBox, QComboBox, 
                              QProgressBar, QListWidget, QFileDialog, QMessageBox)
 
+logger = logging.getLogger(__name__)
+
 class AIBatchWorker(QThread):
+    """Worker thread para processamento em lote de sprite sheets.
+
+    Cada imagem é processada independentemente com seu próprio SpriteExtractor,
+    eliminando preocupações de thread safety com o estado compartilhado.
+    """
     progress_update = pyqtSignal(int)
     log_update = pyqtSignal(str)
-    finished_batch = pyqtSignal(int) # Retorna qtd de arquivos processados exitosamente
+    finished_batch = pyqtSignal(int)
     error = pyqtSignal(str)
 
     def __init__(self, image_files, output_path, prefix_base, padding, uniform, threshold, min_area, remove_bg, upscale):
@@ -59,8 +68,12 @@ class AIBatchWorker(QThread):
                         self.log_update.emit(f"⚠️ {img_file.name}: Nenhum sprite detectado")
                 else:
                     self.log_update.emit(f"❌ Erro ao carregar: {img_file.name}")
-            except Exception as e:
+            except (cv2.error, ValueError) as e:
                 self.log_update.emit(f"❌ Falha em {img_file.name}: {str(e)}")
+                logger.warning("Batch: falha ao processar %s: %s", img_file.name, e)
+            except Exception as e:
+                self.log_update.emit(f"❌ Falha inesperada em {img_file.name}: {str(e)}")
+                logger.error("Batch: erro inesperado em %s: %s", img_file.name, e, exc_info=True)
             
             self.progress_update.emit(i + 1)
             

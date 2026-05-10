@@ -1,14 +1,20 @@
 """
 Sprite Extractor - Core processing module
-Detecta e extrai sprites individuais de uma sprite sheet
+Detecta e extrai sprites individuais de uma sprite sheet.
+
+Este módulo é o coração do My Blueprint Maker. Ele é agnóstico de UI
+e pode ser usado tanto pelo standalone Qt quanto pelo plugin GIMP.
 """
 import cv2
+import logging
 import numpy as np
 from pathlib import Path
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
 import urllib.request
 import os
+
+logger = logging.getLogger(__name__)
 
 class DNNUpscaler:
     def __init__(self):
@@ -40,12 +46,12 @@ class DNNUpscaler:
         
         if not model_path.exists():
             msg = f"Baixando modelo {model_type.upper()}..."
-            print(msg)
+            logger.info(msg)
             if progress_callback: progress_callback(msg)
             try:
                 urllib.request.urlretrieve(model_info["url"], str(model_path))
-            except Exception as e:
-                print(f"Erro ao baixar modelo {model_type}: {e}")
+            except (urllib.error.URLError, OSError) as e:
+                logger.error("Falha ao baixar modelo %s: %s", model_type, e, exc_info=True)
                 return None
                 
         try:
@@ -55,17 +61,27 @@ class DNNUpscaler:
             sr.setModel(model_type, model_info["scale"])
             self.sr_instances[model_type] = sr
             return sr
-        except Exception as e:
-            print(f"Erro ao carregar modelo {model_type}: {e}")
+        except (cv2.error, OSError) as e:
+            logger.error("Falha ao carregar modelo %s: %s", model_type, e, exc_info=True)
             return None
 
     def upscale(self, image: np.ndarray, model_type: str, progress_callback=None) -> np.ndarray:
+        """Aplica upscale DNN na imagem, com fallback para Lanczos4.
+
+        Args:
+            image: Imagem BGR ou BGRA.
+            model_type: Tipo do modelo ("none", "fsrcnn", "edsr").
+            progress_callback: Callable para reportar progresso.
+
+        Returns:
+            Imagem com resolução aumentada (2x).
+        """
         if model_type == "none":
             return image
             
         sr = self.get_model(model_type, progress_callback)
         if sr is None:
-            print(f"Fallback para Lanczos4 (modelo {model_type} falhou)")
+            logger.warning("Fallback para Lanczos4 (modelo %s indisponível)", model_type)
             h, w = image.shape[:2]
             return cv2.resize(image, (w * 2, h * 2), interpolation=cv2.INTER_LANCZOS4)
             
@@ -86,18 +102,57 @@ class DNNUpscaler:
             return sr.upsample(image)
 
 
+# --- Constantes de Detecção ---
+# Margem em pixels para limpar bordas da máscara binária.
+# Valor alto (20px) para ignorar molduras/sombras comuns em sprite sheets JPEG.
+BORDER_CLEANUP_MARGIN_PX = 20
+
+# Tolerância em pixels para agrupar posições de sprites em linhas/colunas.
+# Sprites com centros a menos de GRID_CLUSTER_TOLERANCE px são considerados
+# na mesma linha/coluna durante a detecção de grid.
+GRID_CLUSTER_TOLERANCE_PX = 100
+
+# Quantização de Y para ordenação de sprites por linha.
+# Sprites são agrupados em "linhas" de SORT_ROW_QUANTIZE_PX pixels.
+SORT_ROW_QUANTIZE_PX = 50
+
+# Tamanho da amostra nos cantos para detectar se o fundo é claro ou escuro.
+CORNER_SAMPLE_SIZE = 10
+
+
 @dataclass
 class Sprite:
-    """Representa um sprite detectado"""
-    bbox: Tuple[int, int, int, int]  # x, y, largura, altura
+    """Representa um sprite detectado na imagem.
+
+    Attributes:
+        bbox: Bounding box (x, y, largura, altura) em pixels.
+        image: Array numpy com os pixels do sprite (BGR ou BGRA).
+        index: Índice sequencial após ordenação por posição.
+        view_type: Classificação da vista (front, back, left, right, top, bottom)
+            ou "unknown" se não classificada.
+        rotation: Rotação aplicada ao sprite em graus (0, 90, 180, 270),
+            sentido horário.
+    """
+    bbox: Tuple[int, int, int, int]
     image: np.ndarray
     index: int
-    view_type: str = "unknown"  # front, back, left, right, top, bottom, etc.
-    rotation: int = 0  # 0, 90, 180, 270 (sentido horário)
+    view_type: str = "unknown"
+    rotation: int = 0
 
 
 class SpriteExtractor:
-    """Classe principal para detecção e extração de sprites"""
+    """Motor de detecção e extração de sprites de sprite sheets.
+
+    Fluxo principal:
+        1. load_image() → carrega a imagem fonte
+        2. detect_sprites() → detecta e classifica sprites
+        3. export_sprites() → exporta sprites individuais
+
+    Thread Safety:
+        Esta classe NÃO é thread-safe. Se usada em threads paralelas,
+        o chamador deve garantir que não há acesso concorrente ao estado
+        (original_image, processed_image, sprites).
+    """
     
     def __init__(self):
         self.original_image: Optional[np.ndarray] = None
@@ -107,26 +162,52 @@ class SpriteExtractor:
         self.upscaler = DNNUpscaler()
         
     def load_image(self, path: str) -> bool:
-        """Carrega uma imagem e limpa estados anteriores"""
+        """Carrega uma imagem e limpa estados anteriores.
+
+        Args:
+            path: Caminho absoluto ou relativo para o arquivo de imagem.
+
+        Returns:
+            True se a imagem foi carregada com sucesso, False caso contrário.
+        """
         try:
             self.image_path = Path(path)
+            if not self.image_path.exists():
+                logger.warning("Arquivo não encontrado: %s", path)
+                return False
+
             self.original_image = cv2.imread(str(self.image_path), cv2.IMREAD_UNCHANGED)
             if self.original_image is None:
+                logger.warning("OpenCV não conseguiu decodificar: %s", path)
                 return False
             
-            # Garantir 4 canais (RGBA) se possível
-            if self.original_image.shape[2] == 3:
+            # Garantir 4 canais (BGRA) para consistência interna
+            if len(self.original_image.shape) == 2:
+                # Grayscale → BGRA
+                self.original_image = cv2.cvtColor(self.original_image, cv2.COLOR_GRAY2BGRA)
+            elif self.original_image.shape[2] == 3:
                 self.original_image = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2BGRA)
             
             self.processed_image = self.original_image.copy()
             self.sprites = []
+            logger.info("Imagem carregada: %s (%dx%d)", path, 
+                        self.original_image.shape[1], self.original_image.shape[0])
             return True
-        except Exception:
+        except (cv2.error, OSError) as e:
+            logger.error("Falha ao carregar imagem %s: %s", path, e, exc_info=True)
             return False
     
     def apply_ai_features(self, remove_bg=False, upscale="none", progress_callback=None):
-        """Aplica processamento de IA (rembg e/ou upscale)"""
-        # Sempre resetar para o original antes de aplicar IA
+        """Aplica processamento de IA (rembg e/ou upscale).
+
+        Sempre reseta para a imagem original antes de aplicar,
+        garantindo idempotência em chamadas repetidas.
+
+        Args:
+            remove_bg: Se True, usa rembg para remover o fundo.
+            upscale: Modelo de upscale ("none", "fsrcnn", "edsr").
+            progress_callback: Callable(str) para reportar progresso.
+        """
         self.processed_image = self.original_image.copy()
 
         if remove_bg:
@@ -134,10 +215,12 @@ class SpriteExtractor:
             try:
                 from rembg import remove
                 self.processed_image = remove(self.processed_image)
-            except Exception as e:
-                print(f"Erro ao remover fundo: {e}")
+            except ImportError:
+                logger.warning("rembg não instalado — remoção de fundo ignorada")
+            except (RuntimeError, ValueError) as e:
+                logger.error("Falha ao remover fundo: %s", e, exc_info=True)
 
-        # Suporte a legado (se upscale vir verdadeiro como bool)
+        # Suporte a legado (se upscale vir como bool de versões anteriores)
         if upscale is True: upscale = "fsrcnn"
         if upscale is False: upscale = "none"
 
@@ -145,8 +228,8 @@ class SpriteExtractor:
             if progress_callback: progress_callback(f"Aplicando Upscale {upscale.upper()}...")
             try:
                 self.processed_image = self.upscaler.upscale(self.processed_image, upscale, progress_callback)
-            except Exception as e:
-                print(f"Erro no upscale {upscale}: {e}")
+            except (cv2.error, RuntimeError) as e:
+                logger.error("Falha no upscale %s: %s", upscale, e, exc_info=True)
     
     def detect_sprites(self, threshold: int = 10, min_area: int = 100, layout_hint: str = None, remove_bg: bool = False, upscale: str = "none", progress_callback=None) -> List[Sprite]:
         """
@@ -193,9 +276,9 @@ class SpriteExtractor:
             # Detectar se o fundo é claro ou escuro baseando-se nos cantos
             # Amostrar pequenas áreas nos cantos, com uma margem para ignorar molduras
             h, w = gray.shape
-            margin_h = min(20, h // 50)
-            margin_w = min(20, w // 50)
-            corner_size = 10
+            margin_h = min(BORDER_CLEANUP_MARGIN_PX, h // 50)
+            margin_w = min(BORDER_CLEANUP_MARGIN_PX, w // 50)
+            corner_size = CORNER_SAMPLE_SIZE
             
             # Amostras nos 4 cantos, levemente para dentro
             samples = [
@@ -229,12 +312,11 @@ class SpriteExtractor:
         # 3. Dilate para restaurar o corpo do sprite (menos que a erosão para manter separação)
         binary = cv2.dilate(binary, kernel_small, iterations=1)
         
-        # Limpar bordas agressivamente (garantir que molduras ou sombras de borda não junte tudo)
-        border = 20 # Aumentado para 20px para ignorar molduras comuns em JPEGs
-        binary[0:border, :] = 0
-        binary[-border:, :] = 0
-        binary[:, 0:border] = 0
-        binary[:, -border:] = 0
+        # Limpar bordas para ignorar molduras/sombras de borda comuns em JPEGs
+        binary[0:BORDER_CLEANUP_MARGIN_PX, :] = 0
+        binary[-BORDER_CLEANUP_MARGIN_PX:, :] = 0
+        binary[:, 0:BORDER_CLEANUP_MARGIN_PX] = 0
+        binary[:, -BORDER_CLEANUP_MARGIN_PX:] = 0
         
         # Encontrar contornos
         contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -247,8 +329,8 @@ class SpriteExtractor:
                 x, y, w, h = cv2.boundingRect(contour)
                 bboxes.append((x, y, w, h))
         
-        # Ordenar bounding boxes: primeiro por Y (linha), depois por X (coluna)
-        bboxes.sort(key=lambda b: (round(b[1] / 50) * 50, b[0]))
+        # Ordenar bounding boxes: primeiro por Y (linha quantizada), depois por X (coluna)
+        bboxes.sort(key=lambda b: (round(b[1] / SORT_ROW_QUANTIZE_PX) * SORT_ROW_QUANTIZE_PX, b[0]))
         
         # Criar objetos Sprite
         for idx, (x, y, w, h) in enumerate(bboxes):
@@ -342,7 +424,7 @@ class SpriteExtractor:
         x_centers = sorted([s.bbox[0] + s.bbox[2]//2 for s in self.sprites])
         
         # Agrupar posições por proximidade
-        def count_clusters(positions, tolerance=100):
+        def count_clusters(positions, tolerance=GRID_CLUSTER_TOLERANCE_PX):
             if not positions: return 0
             clusters = 1
             for i in range(1, len(positions)):
@@ -362,7 +444,7 @@ class SpriteExtractor:
         y_centers = sorted([s.bbox[1] + s.bbox[3]//2 for s in self.sprites])
         x_centers = sorted([s.bbox[0] + s.bbox[2]//2 for s in self.sprites])
         
-        def get_cluster_index(val, positions, tolerance=100):
+        def get_cluster_index(val, positions, tolerance=GRID_CLUSTER_TOLERANCE_PX):
             unique_clusters = []
             for p in positions:
                 if not any(abs(p - c) < tolerance for c in unique_clusters):
@@ -528,8 +610,8 @@ class SpriteExtractor:
         new_sprite = Sprite(bbox=new_bbox, image=new_img, index=0) # Index will be updated
         self.sprites.append(new_sprite)
         
-        # Sort and reindex all sprites based on position (Y, then X)
-        self.sprites.sort(key=lambda s: (round(s.bbox[1] / 50) * 50, s.bbox[0]))
+        # Sort and reindex all sprites based on position (Y quantized, then X)
+        self.sprites.sort(key=lambda s: (round(s.bbox[1] / SORT_ROW_QUANTIZE_PX) * SORT_ROW_QUANTIZE_PX, s.bbox[0]))
         for i, s in enumerate(self.sprites):
             s.index = i
             

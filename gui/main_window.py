@@ -1,6 +1,13 @@
 """
-Main Window - Interface gráfica principal do My Blueprint Maker
+Main Window - Interface gráfica principal do My Blueprint Maker.
+
+Thread Safety:
+    A MainWindow cria AIDetectionWorker threads para processamento de IA.
+    O SpriteExtractor é compartilhado entre a main thread e o worker.
+    A UI é desabilitada durante o processamento para prevenir mutações
+    concorrentes no estado do extractor.
 """
+import logging
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QMessageBox, QFileDialog, QTabWidget, QComboBox,
@@ -12,6 +19,8 @@ from core.i18n import tr
 from pathlib import Path
 import cv2
 
+logger = logging.getLogger(__name__)
+
 from core.sprite_extractor import SpriteExtractor
 from components.image_viewer import ImageViewer
 from components.detection_controls import DetectionControls
@@ -19,6 +28,14 @@ from components.sprite_list import SpriteList
 from components.batch_processor import BatchProcessor
 
 class AIDetectionWorker(QThread):
+    """Worker thread para detecção de sprites com IA.
+
+    NOTA DE THREAD SAFETY:
+        Este worker recebe uma referência ao SpriteExtractor da MainWindow.
+        A UI é desabilitada durante a execução para prevenir acesso concorrente.
+        Se no futuro precisarmos de detecções concorrentes, o extractor
+        deverá ser clonado ou protegido por mutex.
+    """
     finished = pyqtSignal(list)
     error = pyqtSignal(str)
     status_update = pyqtSignal(str)
@@ -45,6 +62,7 @@ class AIDetectionWorker(QThread):
             )
             self.finished.emit(sprites)
         except Exception as e:
+            logger.error("Falha na detecção de sprites: %s", e, exc_info=True)
             self.error.emit(str(e))
 
 class MainWindow(QMainWindow):

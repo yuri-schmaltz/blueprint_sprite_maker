@@ -1,6 +1,10 @@
 """
-3D Preview Widget - Visualização 3D de sprites em um cubo
+3D Preview Widget - Visualização 3D de sprites em um cubo.
+
+Usa OpenGL via PyQt6 para renderizar sprites detectados
+mapeados nas faces de um cubo, cilindro ou plano.
 """
+import logging
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtGui import QImage
 import OpenGL.GL as gl
@@ -8,6 +12,8 @@ import OpenGL.GLU as glu
 import numpy as np
 import cv2
 from PyQt6 import QtCore
+
+logger = logging.getLogger(__name__)
 
 class SpritePreview3D(QOpenGLWidget):
     def __init__(self, parent=None):
@@ -30,14 +36,20 @@ class SpritePreview3D(QOpenGLWidget):
             self.update()
 
     def set_bg_color(self, r, g, b):
-        """Define a cor de fundo do preview 3D"""
+        """Define a cor de fundo do preview 3D (valores float 0.0-1.0)."""
         self.bg_color = (r, g, b)
         self.makeCurrent()
         gl.glClearColor(r, g, b, 1.0)
         self.update()
 
     def set_sprites(self, sprites):
-        """Atualiza os sprites para o cubo"""
+        """Atualiza os sprites mapeados nas faces do corpo 3D.
+
+        Args:
+            sprites: Lista de Sprite com view_type definido.
+                Apenas sprites com view_type reconhecido (front, back, etc.)
+                serão mapeados nas faces correspondentes.
+        """
         self.sprite_map = {s.view_type: s for s in sprites}
         self.update()
 
@@ -67,9 +79,9 @@ class SpritePreview3D(QOpenGLWidget):
                 self._draw_cylinder()
             elif self.body_type == "plane":
                 self._draw_plane()
-        except Exception as e:
-            # Log error but don't crash - OpenGL errors can be transient
-            print(f"[3D Preview] OpenGL error: {e}")
+        except (gl.GLError, Exception) as e:
+            # OpenGL errors can be transient during resize/initialization
+            logger.debug("OpenGL render error (transient): %s", e)
 
     def _draw_cube(self):
         # Mapeamento do cubo: faces (Front, Back, Left, Right, Top, Bottom)
