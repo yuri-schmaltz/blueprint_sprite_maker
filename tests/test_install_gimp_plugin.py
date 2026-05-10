@@ -9,9 +9,11 @@ def test_parse_version_dir_handles_numeric_directories():
     assert install_gimp_plugin._parse_version_dir(Path("3.0")) == (3, 0)
     assert install_gimp_plugin._parse_version_dir(Path("dev")) is None
 
+import platform
 
 def test_get_default_gimp_plugins_root_uses_latest_profile(monkeypatch, tmp_path):
     fake_home = tmp_path / "home"
+    monkeypatch.setattr(platform, "system", lambda: "Windows")
     gimp_root = fake_home / "AppData" / "Roaming" / "GIMP"
     (gimp_root / "3.0").mkdir(parents=True)
     (gimp_root / "3.2").mkdir(parents=True)

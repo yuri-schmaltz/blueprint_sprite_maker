@@ -6,6 +6,7 @@ import argparse
 import json
 import shutil
 import sys
+import platform
 from pathlib import Path
 
 
@@ -46,9 +47,32 @@ def _parse_version_dir(path: Path) -> tuple[int, ...] | None:
 
 
 def get_default_gimp_plugins_root() -> Path:
-    appdata = Path.home() / "AppData" / "Roaming"
-    gimp_root = appdata / "GIMP"
-    if not gimp_root.is_dir():
+    system = platform.system()
+    home = Path.home()
+    
+    # Lista de possíveis raízes de configuração do GIMP dependendo da plataforma
+    possible_roots = []
+    
+    if system == "Windows":
+        possible_roots.append(home / "AppData" / "Roaming" / "GIMP")
+    elif system == "Darwin": # macOS
+        possible_roots.append(home / "Library" / "Application Support" / "GIMP")
+    else: # Linux / FreeBSD
+        # Linux Native / AppImage
+        possible_roots.append(home / ".config" / "GIMP")
+        # Linux Flatpak
+        possible_roots.append(home / ".var" / "app" / "org.gimp.GIMP" / "config" / "GIMP")
+    
+    # Encontrar a primeira raiz que existe
+    gimp_root = None
+    for root in possible_roots:
+        if root.is_dir():
+            gimp_root = root
+            break
+            
+    if gimp_root is None:
+        # Fallback para o default da plataforma atual se nenhuma existir
+        gimp_root = possible_roots[0]
         return gimp_root / DEFAULT_GIMP_VERSION / "plug-ins"
 
     version_dirs = []
@@ -71,8 +95,8 @@ def get_default_target_dir() -> Path:
 
 def get_default_target_help() -> str:
     return (
-        "Diretorio de destino do plugin. O padrao usa a versao mais recente em "
-        "%APPDATA%/GIMP/<versao>/plug-ins/my-blueprint-maker."
+        "Diretorio de destino do plugin. O padrao detecta automaticamente a versao mais recente "
+        "do GIMP (Windows, macOS, Linux Flatpak/AppImage/Nativo)."
     )
 
 
