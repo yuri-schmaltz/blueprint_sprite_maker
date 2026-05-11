@@ -13,6 +13,7 @@ from typing import List, Tuple, Optional
 from dataclasses import dataclass
 import urllib.request
 import os
+from urllib.error import HTTPError, URLError
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +222,8 @@ class SpriteExtractor:
                 self.processed_image = remove(self.processed_image)
             except ImportError:
                 logger.warning("rembg não instalado — remoção de fundo ignorada")
+            except (ConnectionError, TimeoutError, HTTPError, URLError, OSError) as e:
+                logger.warning("Remoção de fundo indisponível por falha de rede/IO: %s", e, exc_info=True)
             except (RuntimeError, ValueError) as e:
                 logger.error("Falha ao remover fundo: %s", e, exc_info=True)
 

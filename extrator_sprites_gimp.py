@@ -32,6 +32,42 @@ RUNTIME_DEPENDENCY_ERROR = (
 PREVIEW_MAX_SIZE = 440
 
 
+def _get_subprocess_run_kwargs() -> dict:
+    kwargs = {
+        "capture_output": True,
+        "text": True,
+        "check": False,
+    }
+
+    if sys.platform == "win32":
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = getattr(subprocess, "SW_HIDE", 0)
+        kwargs["startupinfo"] = startupinfo
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+    return kwargs
+
+
+def _apply_system_theme(dialog: Gtk.Dialog) -> None:
+    settings = Gtk.Settings.get_default()
+    if settings is None:
+        return
+
+    dialog_settings = dialog.get_settings()
+    if dialog_settings is None:
+        return
+
+    theme_name = settings.get_property("gtk-theme-name")
+    if theme_name:
+        dialog_settings.set_property("gtk-theme-name", theme_name)
+
+    dialog_settings.set_property(
+        "gtk-application-prefer-dark-theme",
+        bool(settings.get_property("gtk-application-prefer-dark-theme")),
+    )
+
+
 def _show_error(message: str):
     Gimp.message(message)
 
@@ -358,7 +394,7 @@ def _run_external_preview(drawable: Gimp.Drawable, params: dict, preview_kind: s
         if params["remove-bg"]:
             command.append("--remove-bg")
 
-        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+        completed = subprocess.run(command, **_get_subprocess_run_kwargs())
         if completed.returncode != 0:
             details = (completed.stderr or completed.stdout or "").strip()
             raise RuntimeError(details or "A geracao da preview falhou.")
@@ -382,13 +418,14 @@ def _run_external_preview(drawable: Gimp.Drawable, params: dict, preview_kind: s
 
 def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     dialog = Gtk.Dialog(title="Blueprint Maker", modal=True)
+    _apply_system_theme(dialog)
     dialog.add_button("_Cancelar", Gtk.ResponseType.CANCEL)
     dialog.add_button("Preview deteccao", 1001)
     dialog.add_button("Preview mascara", 1002)
     dialog.add_button("_Extrair", Gtk.ResponseType.OK)
     dialog.set_default_response(Gtk.ResponseType.OK)
     dialog.set_default_size(760, 620)
-    dialog.set_resizable(False)
+    dialog.set_resizable(True)
 
     content_area = dialog.get_content_area()
     content_area.set_spacing(12)
@@ -610,7 +647,7 @@ def _run_external_extraction(image: Gimp.Image, drawable: Gimp.Drawable, config)
         if bool(config.get_property("remove-bg")):
             command.append("--remove-bg")
 
-        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+        completed = subprocess.run(command, **_get_subprocess_run_kwargs())
         if completed.returncode != 0:
             details = (completed.stderr or completed.stdout or "").strip()
             raise RuntimeError(details or "A execucao externa do extrator falhou.")

@@ -1,5 +1,7 @@
 import pytest
 import numpy as np
+import sys
+from types import SimpleNamespace
 from core.sprite_extractor import SpriteExtractor, DNNUpscaler
 
 class TestAIFeatures:
@@ -46,3 +48,16 @@ class TestAIFeatures:
         
         mock_remove.assert_called_once()
         assert extractor.processed_image.shape == (20, 20, 4)
+
+    def test_apply_ai_features_remove_bg_network_failure_falls_back(self, mocker):
+        extractor = SpriteExtractor()
+        original_image = np.zeros((20, 20, 3), dtype=np.uint8)
+        extractor.original_image = original_image
+
+        mock_remove = mocker.Mock(side_effect=ConnectionError("proxy recusou conexao"))
+        mocker.patch.dict(sys.modules, {"rembg": SimpleNamespace(remove=mock_remove)})
+
+        extractor.apply_ai_features(remove_bg=True, upscale="none")
+
+        mock_remove.assert_called_once()
+        assert np.array_equal(extractor.processed_image, original_image)
