@@ -1,0 +1,9 @@
+{
+  "preview": {
+    "file_name": "preview_detection.rgba",
+    "width": 200,
+    "height": 200,
+    "kind": "detection",
+    "sprite_count": 1
+  }
+}
