@@ -1,4 +1,4 @@
-# Checklist de Qualidade — My Blueprint Maker
+# Checklist de Qualidade — Blueprint Maker
 
 > Derivado das diretrizes de **Obsessão pelo Objetivo** do `gabarito_ia.pdf`.
 > Use esta checklist antes de cada commit ou PR significativo.

@@ -32,7 +32,7 @@ def test_get_default_gimp_plugins_root_uses_latest_profile(
 def test_collect_missing_items_detects_absent_entries(tmp_path):
     missing = install_gimp_plugin.collect_missing_items(tmp_path)
 
-    assert "my-blueprint-maker.py" in missing
+    assert "blueprint-maker.py" in missing
     assert "extrator_sprites_gimp.py" in missing
     assert "external_sprite_runner.py" in missing
     assert "core" in missing

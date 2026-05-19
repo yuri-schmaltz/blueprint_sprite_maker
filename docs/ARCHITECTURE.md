@@ -1,4 +1,4 @@
-# Arquitetura — My Blueprint Maker
+# Arquitetura — Blueprint Maker
 
 > Mapa completo do projeto para permitir decisões informadas (Diretriz: Profundidade/CoT).
 
@@ -6,7 +6,7 @@
 
 ## Visão Geral
 
-O My Blueprint Maker é um **extrator de sprites** que opera em dois modos:
+O Blueprint Maker e um **extrator de sprites** que opera em dois modos:
 
 1. **Plugin GIMP 3+** — Integrado ao GIMP via Python-Fu, com dialog GTK nativo
 2. **Standalone Qt** — Aplicação desktop independente com PyQt6

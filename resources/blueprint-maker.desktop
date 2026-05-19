@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Blueprint Maker
+Comment=Sprite extraction and AI manipulation tool
+Exec=blueprint-maker
+Icon=blueprint-maker
+Terminal=false
+Categories=Graphics;

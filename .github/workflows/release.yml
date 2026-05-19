@@ -36,8 +36,8 @@ jobs:
           
       - name: Build with PyInstaller
         run: |
-          pyinstaller --noconfirm --onefile --windowed --add-data "resources:resources" --icon "resources/icon.png" --name "my-blueprint-maker" main.py
-          mv dist/my-blueprint-maker dist/my-blueprint-maker-bin
+          pyinstaller --noconfirm --onefile --windowed --add-data "resources:resources" --icon "resources/icon.png" --name "blueprint-maker" main.py
+          mv dist/blueprint-maker dist/blueprint-maker-bin
 
       - name: Install nFPM
         run: |
@@ -52,10 +52,10 @@ jobs:
           sed -i "s/version: .*/version: \"$VERSION\"/" nfpm.yaml
           
           # DEB
-          nfpm pkg --packager deb --target packages/MyBlueprintMaker-${VERSION}-amd64.deb
+          nfpm pkg --packager deb --target packages/blueprint-maker-${VERSION}-amd64.deb
           
           # RPM
-          nfpm pkg --packager rpm --target packages/MyBlueprintMaker-${VERSION}-amd64.rpm
+          nfpm pkg --packager rpm --target packages/blueprint-maker-${VERSION}-amd64.rpm
           
       - name: Create AppImage
         run: |
@@ -63,19 +63,19 @@ jobs:
           chmod +x linuxdeploy-x86_64.AppImage
           
           mkdir -p AppDir/usr/bin
-          cp dist/my-blueprint-maker-bin AppDir/usr/bin/my-blueprint-maker
+          cp dist/blueprint-maker-bin AppDir/usr/bin/blueprint-maker
           
           mkdir -p AppDir/usr/share/applications
-          cp resources/my-blueprint-maker.desktop AppDir/usr/share/applications/
+          cp resources/blueprint-maker.desktop AppDir/usr/share/applications/
           
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps/
-          cp resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/my-blueprint-maker.png
+          cp resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/blueprint-maker.png
           
           export VERSION=${GITHUB_REF#refs/tags/v}
           ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
           
           mkdir -p packages
-          mv My_Blueprint_Maker-*.AppImage packages/MyBlueprintMaker-${VERSION}-x86_64.AppImage
+          find . -maxdepth 1 -name '*.AppImage' ! -name 'linuxdeploy-x86_64.AppImage' -exec mv {} packages/blueprint-maker-${VERSION}-x86_64.AppImage \;
           
       - name: Upload Linux Artifacts
         uses: actions/upload-artifact@v4
@@ -101,10 +101,10 @@ jobs:
           
       - name: Build with PyInstaller
         run: |
-          pyinstaller --noconfirm --onefile --windowed --add-data "resources;resources" --icon "resources/icon.png" --name "my-blueprint-maker" main.py
+          pyinstaller --noconfirm --onefile --windowed --add-data "resources;resources" --icon "resources/icon.png" --name "blueprint-maker" main.py
           $VERSION = $env:GITHUB_REF -replace 'refs/tags/v', ''
           New-Item -ItemType Directory -Force -Path packages
-          Move-Item dist/my-blueprint-maker.exe packages/MyBlueprintMaker-$VERSION-win64.exe
+          Move-Item dist/blueprint-maker.exe packages/blueprint-maker-$VERSION-win64.exe
           
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4

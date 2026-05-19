@@ -17,16 +17,24 @@ gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("Gimp", "3.0")
 gi.require_version("Gtk", "3.0")
 
-from gi.repository import GdkPixbuf, Gegl, Gimp, GObject, GLib, Gtk
+from gi.repository import (  # noqa: E402
+    GdkPixbuf,
+    Gegl,
+    Gimp,
+    GObject,
+    GLib,
+    Gtk,
+)
 
 
-PROCEDURE_NAME = "python-fu-my-blueprint-maker-extract-sprites"
+PROCEDURE_NAME = "python-fu-blueprint-maker-extract-sprites"
 RGBA_FORMAT = "R'G'B'A u8"
 PLUGIN_DIR = Path(__file__).resolve().parent
 EXTERNAL_RUNNER_PATH = PLUGIN_DIR / "external_sprite_runner.py"
 RUNTIME_CONFIG_PATH = PLUGIN_DIR / "plugin_runtime_config.json"
 RUNTIME_DEPENDENCY_ERROR = (
-    "As dependencias Python do plugin nao estao disponiveis para o Python do GIMP. "
+    "As dependencias Python do plugin nao estao disponiveis para o Python "
+    "do GIMP. "
     "Instale numpy e opencv-python no ambiente usado pelo GIMP."
 )
 PREVIEW_MAX_SIZE = 440
@@ -88,7 +96,9 @@ def _load_runtime_dependencies():
         np = import_module("numpy")
         sprite_extractor_module = import_module("core.sprite_extractor")
     except ModuleNotFoundError as exc:
-        raise RuntimeError(f"{RUNTIME_DEPENDENCY_ERROR} Modulo ausente: {exc.name}") from exc
+        raise RuntimeError(
+            f"{RUNTIME_DEPENDENCY_ERROR} Modulo ausente: {exc.name}"
+        ) from exc
 
     return cv2, np, sprite_extractor_module.SpriteExtractor
 
@@ -97,7 +107,12 @@ def _drawable_to_bgra(drawable: Gimp.Drawable, cv2, np):
     width = drawable.get_width()
     height = drawable.get_height()
     rect = Gegl.Rectangle.new(0, 0, width, height)
-    src = drawable.get_buffer().get(rect, 1.0, RGBA_FORMAT, Gegl.AbyssPolicy.NONE)
+    src = drawable.get_buffer().get(
+        rect,
+        1.0,
+        RGBA_FORMAT,
+        Gegl.AbyssPolicy.NONE,
+    )
     rgba = np.frombuffer(src, dtype=np.uint8).reshape((height, width, 4))
     return cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGRA)
 
@@ -106,7 +121,12 @@ def _save_drawable_png(drawable: Gimp.Drawable, destination: Path):
     width = drawable.get_width()
     height = drawable.get_height()
     rect = Gegl.Rectangle.new(0, 0, width, height)
-    rgba_bytes = drawable.get_buffer().get(rect, 1.0, RGBA_FORMAT, Gegl.AbyssPolicy.NONE)
+    rgba_bytes = drawable.get_buffer().get(
+        rect,
+        1.0,
+        RGBA_FORMAT,
+        Gegl.AbyssPolicy.NONE,
+    )
     destination.write_bytes(bytes(rgba_bytes))
     return width, height
 
@@ -119,7 +139,12 @@ def _sprite_to_rgba(sprite_image, cv2):
     return cv2.cvtColor(sprite_image, cv2.COLOR_BGR2RGBA)
 
 
-def _create_single_sprite_image(rgba_bytes: bytes, width: int, height: int, view_type: str):
+def _create_single_sprite_image(
+    rgba_bytes: bytes,
+    width: int,
+    height: int,
+    view_type: str,
+):
     result_image = Gimp.Image.new(width, height, Gimp.ImageBaseType.RGB)
     layer = Gimp.Layer.new(
         result_image,
@@ -145,7 +170,11 @@ def _create_layered_result_image(sprites, cv2):
     max_x = max(sprite.bbox[0] + sprite.bbox[2] for sprite in sprites)
     max_y = max(sprite.bbox[1] + sprite.bbox[3] for sprite in sprites)
 
-    result_image = Gimp.Image.new(max_x - min_x, max_y - min_y, Gimp.ImageBaseType.RGB)
+    result_image = Gimp.Image.new(
+        max_x - min_x,
+        max_y - min_y,
+        Gimp.ImageBaseType.RGB,
+    )
 
     for index, sprite in enumerate(sprites):
         rgba = _sprite_to_rgba(sprite.image, cv2)
@@ -195,7 +224,12 @@ def _create_result_images_from_exports(sprites, output_dir: Path):
         height = int(sprite["height"])
         rgba_bytes = sprite_path.read_bytes()
         result_images.append(
-            _create_single_sprite_image(rgba_bytes, width, height, sprite["view_type"])
+            _create_single_sprite_image(
+                rgba_bytes,
+                width,
+                height,
+                sprite["view_type"],
+            )
         )
     return result_images
 
@@ -206,7 +240,11 @@ def _create_layered_result_image_from_exports(sprites, output_dir: Path):
     max_x = max(sprite["bbox"][0] + sprite["bbox"][2] for sprite in sprites)
     max_y = max(sprite["bbox"][1] + sprite["bbox"][3] for sprite in sprites)
 
-    result_image = Gimp.Image.new(max_x - min_x, max_y - min_y, Gimp.ImageBaseType.RGB)
+    result_image = Gimp.Image.new(
+        max_x - min_x,
+        max_y - min_y,
+        Gimp.ImageBaseType.RGB,
+    )
 
     for index, sprite in enumerate(sprites):
         sprite_path = output_dir / sprite["file_name"]
@@ -254,7 +292,12 @@ def _collect_dialog_params(
     }
 
 
-def _create_preview_image(rgba_bytes: bytes, width: int, height: int, title: str):
+def _create_preview_image(
+    rgba_bytes: bytes,
+    width: int,
+    height: int,
+    title: str,
+):
     return _create_single_sprite_image(rgba_bytes, width, height, title)
 
 
@@ -275,7 +318,11 @@ def _pixbuf_from_rgba_bytes(rgba_bytes: bytes, width: int, height: int):
     scale = min(PREVIEW_MAX_SIZE / width, PREVIEW_MAX_SIZE / height)
     scaled_width = max(1, int(width * scale))
     scaled_height = max(1, int(height * scale))
-    return pixbuf.scale_simple(scaled_width, scaled_height, GdkPixbuf.InterpType.BILINEAR)
+    return pixbuf.scale_simple(
+        scaled_width,
+        scaled_height,
+        GdkPixbuf.InterpType.BILINEAR,
+    )
 
 
 def _set_preview_widget(
@@ -291,7 +338,10 @@ def _set_preview_widget(
     if sprite_count is None:
         preview_info_label.set_text(f"Preview {width}x{height}")
     else:
-        preview_info_label.set_text(f"Preview {width}x{height} | Sprites detectados: {sprite_count}")
+        preview_info_label.set_text(
+            f"Preview {width}x{height} | "
+            f"Sprites detectados: {sprite_count}"
+        )
 
 
 def _refresh_preview_widget(
@@ -302,7 +352,11 @@ def _refresh_preview_widget(
     preview_info_label,
     preview_hint_label,
 ):
-    preview_image, sprite_count = _run_external_preview(drawable, params, preview_kind)
+    preview_image, sprite_count = _run_external_preview(
+        drawable,
+        params,
+        preview_kind,
+    )
     preview_layer = preview_image.get_layers()[0]
     preview_width = preview_layer.get_width()
     preview_height = preview_layer.get_height()
@@ -324,11 +378,17 @@ def _refresh_preview_widget(
         sprite_count,
     )
     preview_hint_label.set_text(
-        "Preview de mascara" if preview_kind == "mask" else "Preview de deteccao"
+        "Preview de mascara"
+        if preview_kind == "mask"
+        else "Preview de deteccao"
     )
 
 
-def _schedule_preview_refresh(state: dict, build_params, drawable: Gimp.Drawable):
+def _schedule_preview_refresh(
+    state: dict,
+    build_params,
+    drawable: Gimp.Drawable,
+):
     source_id = state.get("preview_source_id")
     if source_id:
         GLib.source_remove(source_id)
@@ -356,14 +416,23 @@ def _schedule_preview_refresh(state: dict, build_params, drawable: Gimp.Drawable
     state["preview_source_id"] = GLib.timeout_add(350, _run_preview_update)
 
 
-def _run_external_preview(drawable: Gimp.Drawable, params: dict, preview_kind: str):
+def _run_external_preview(
+    drawable: Gimp.Drawable,
+    params: dict,
+    preview_kind: str,
+):
     runtime_config = _load_runtime_config()
     helper_python = Path(runtime_config.get("helper_python", ""))
 
     if not helper_python.exists():
-        raise RuntimeError("Nao foi encontrado um Python externo configurado para gerar a preview.")
+        raise RuntimeError(
+            "Nao foi encontrado um Python externo configurado para gerar "
+            "a preview."
+        )
 
-    with tempfile.TemporaryDirectory(prefix="my_blueprint_preview_") as temp_dir_str:
+    with tempfile.TemporaryDirectory(
+        prefix="blueprint_preview_"
+    ) as temp_dir_str:
         temp_dir = Path(temp_dir_str)
         input_path = temp_dir / "input.rgba"
         output_dir = temp_dir / "output"
@@ -399,7 +468,9 @@ def _run_external_preview(drawable: Gimp.Drawable, params: dict, preview_kind: s
             details = (completed.stderr or completed.stdout or "").strip()
             raise RuntimeError(details or "A geracao da preview falhou.")
 
-        metadata = json.loads((output_dir / "metadata.json").read_text(encoding="utf-8"))
+        metadata = json.loads(
+            (output_dir / "metadata.json").read_text(encoding="utf-8")
+        )
         preview = metadata.get("preview")
         if not preview:
             raise RuntimeError("A preview nao foi gerada.")
@@ -407,10 +478,14 @@ def _run_external_preview(drawable: Gimp.Drawable, params: dict, preview_kind: s
         preview_path = output_dir / preview["file_name"]
         return (
             _create_preview_image(
-            preview_path.read_bytes(),
-            int(preview["width"]),
-            int(preview["height"]),
-            "preview_mask" if preview_kind == "mask" else "preview_detection",
+                preview_path.read_bytes(),
+                int(preview["width"]),
+                int(preview["height"]),
+                (
+                    "preview_mask"
+                    if preview_kind == "mask"
+                    else "preview_detection"
+                ),
             ),
             int(preview.get("sprite_count", 0)),
         )
@@ -438,7 +513,10 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     content_area.add(container)
 
     description = Gtk.Label(
-        label="Configure a deteccao, gere previews e escolha o formato de saida antes da extracao.",
+        label=(
+            "Configure a deteccao, gere previews e escolha o formato de "
+            "saida antes da extracao."
+        ),
         xalign=0.0,
     )
     description.set_line_wrap(True)
@@ -458,7 +536,12 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     detection_frame.add(detection_grid)
 
     threshold_label = Gtk.Label(label="Threshold", xalign=0.0)
-    threshold_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 255, 1)
+    threshold_scale = Gtk.Scale.new_with_range(
+        Gtk.Orientation.HORIZONTAL,
+        1,
+        255,
+        1,
+    )
     threshold_scale.set_digits(0)
     threshold_scale.set_hexpand(True)
     threshold_scale.set_value(float(config.get_property("threshold")))
@@ -473,7 +556,9 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     layout_combo.append("3x2", "3x2")
     layout_combo.append("2x3", "2x3")
     layout_combo.append("2x2", "2x2")
-    layout_combo.set_active_id((config.get_property("layout-hint") or "").strip().lower())
+    layout_combo.set_active_id(
+        (config.get_property("layout-hint") or "").strip().lower()
+    )
 
     advanced_frame = Gtk.Frame(label="Opcoes avancadas")
     controls_box.pack_start(advanced_frame, False, False, 0)
@@ -489,7 +574,9 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     upscale_combo.append("none", "Nenhum")
     upscale_combo.append("fsrcnn", "FSRCNN")
     upscale_combo.append("edsr", "EDSR")
-    upscale_combo.set_active_id((config.get_property("upscale") or "none").strip().lower())
+    upscale_combo.set_active_id(
+        (config.get_property("upscale") or "none").strip().lower()
+    )
 
     output_frame = Gtk.Frame(label="Saida")
     controls_box.pack_start(output_frame, False, False, 0)
@@ -504,7 +591,11 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     output_mode_combo = Gtk.ComboBoxText()
     output_mode_combo.append("separate-images", "Uma imagem por sprite")
     output_mode_combo.append("layered-image", "Uma imagem unica com camadas")
-    output_mode_combo.set_active_id((config.get_property("output-mode") or "separate-images").strip().lower())
+    output_mode_combo.set_active_id(
+        (config.get_property("output-mode") or "separate-images")
+        .strip()
+        .lower()
+    )
 
     detection_grid.attach(threshold_label, 0, 0, 1, 1)
     detection_grid.attach(threshold_scale, 1, 0, 1, 1)
@@ -529,7 +620,10 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     preview_frame.add(preview_box)
 
     preview_hint_label = Gtk.Label(
-        label="Use os botoes de preview para visualizar a deteccao ou a mascara antes de extrair.",
+        label=(
+            "Use os botoes de preview para visualizar a deteccao ou a "
+            "mascara antes de extrair."
+        ),
         xalign=0.0,
     )
     preview_hint_label.set_line_wrap(True)
@@ -540,7 +634,10 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
     preview_image_widget.set_vexpand(True)
     preview_box.pack_start(preview_image_widget, True, True, 0)
 
-    preview_info_label = Gtk.Label(label="Nenhuma preview gerada ainda.", xalign=0.0)
+    preview_info_label = Gtk.Label(
+        label="Nenhuma preview gerada ainda.",
+        xalign=0.0,
+    )
     preview_box.pack_start(preview_info_label, False, False, 0)
 
     preview_state = {
@@ -592,7 +689,10 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
             dialog.destroy()
             return True
 
-        if response == Gtk.ResponseType.CANCEL or response == Gtk.ResponseType.DELETE_EVENT:
+        if response in {
+            Gtk.ResponseType.CANCEL,
+            Gtk.ResponseType.DELETE_EVENT,
+        }:
             if preview_state["preview_source_id"]:
                 GLib.source_remove(preview_state["preview_source_id"])
                 preview_state["preview_source_id"] = None
@@ -606,19 +706,29 @@ def _run_configuration_dialog(config, drawable: Gimp.Drawable) -> bool:
                 _queue_detection_preview()
 
 
-def _run_external_extraction(image: Gimp.Image, drawable: Gimp.Drawable, config):
+def _run_external_extraction(
+    image: Gimp.Image,
+    drawable: Gimp.Drawable,
+    config,
+):
     runtime_config = _load_runtime_config()
     helper_python = Path(runtime_config.get("helper_python", ""))
 
     if not helper_python.exists():
         raise RuntimeError(
-            "Nao foi encontrado um Python externo configurado para executar a extracao. "
-            "Reinstale o plugin pelo repositorio para atualizar plugin_runtime_config.json."
+            "Nao foi encontrado um Python externo configurado para executar "
+            "a extracao. Reinstale o plugin pelo repositorio para atualizar "
+            "plugin_runtime_config.json."
         )
     if not EXTERNAL_RUNNER_PATH.exists():
-        raise RuntimeError("O helper externo do plugin nao foi encontrado na pasta instalada.")
+        raise RuntimeError(
+            "O helper externo do plugin nao foi encontrado na pasta "
+            "instalada."
+        )
 
-    with tempfile.TemporaryDirectory(prefix="my_blueprint_maker_") as temp_dir_str:
+    with tempfile.TemporaryDirectory(
+        prefix="blueprint_maker_"
+    ) as temp_dir_str:
         temp_dir = Path(temp_dir_str)
         input_path = temp_dir / "input.rgba"
         output_dir = temp_dir / "output"
@@ -650,7 +760,9 @@ def _run_external_extraction(image: Gimp.Image, drawable: Gimp.Drawable, config)
         completed = subprocess.run(command, **_get_subprocess_run_kwargs())
         if completed.returncode != 0:
             details = (completed.stderr or completed.stdout or "").strip()
-            raise RuntimeError(details or "A execucao externa do extrator falhou.")
+            raise RuntimeError(
+                details or "A execucao externa do extrator falhou."
+            )
 
         metadata_path = output_dir / "metadata.json"
         if not metadata_path.exists():
@@ -661,9 +773,18 @@ def _run_external_extraction(image: Gimp.Image, drawable: Gimp.Drawable, config)
         if not sprites:
             return None
 
-        output_mode = (config.get_property("output-mode") or "separate-images").strip().lower()
+        output_mode = (
+            (config.get_property("output-mode") or "separate-images")
+            .strip()
+            .lower()
+        )
         if output_mode == "layered-image":
-            return [_create_layered_result_image_from_exports(sprites, output_dir)]
+            return [
+                _create_layered_result_image_from_exports(
+                    sprites,
+                    output_dir,
+                )
+            ]
         return _create_result_images_from_exports(sprites, output_dir)
 
 
@@ -672,13 +793,25 @@ class BlueprintMakerGimpPlugin(Gimp.PlugIn):
         return [PROCEDURE_NAME]
 
     def do_create_procedure(self, name):
-        procedure = Gimp.ImageProcedure.new(self, name, Gimp.PDBProcType.PLUGIN, self.run, None)
+        procedure = Gimp.ImageProcedure.new(
+            self,
+            name,
+            Gimp.PDBProcType.PLUGIN,
+            self.run,
+            None,
+        )
         procedure.set_image_types("*")
         procedure.set_menu_label("Extrair sprites para nova imagem")
         procedure.add_menu_path("<Image>/Filters/Blueprint Maker")
         procedure.set_documentation(
-            "Detecta sprites na camada ativa e cria uma nova imagem para cada sprite detectado.",
-            "Usa o motor de deteccao existente do projeto para gerar uma imagem separada no GIMP para cada sprite identificado.",
+            (
+                "Detecta sprites na camada ativa e cria uma nova imagem para "
+                "cada sprite detectado."
+            ),
+            (
+                "Usa o motor de deteccao existente do projeto para gerar uma "
+                "imagem separada no GIMP para cada sprite identificado."
+            ),
             None,
         )
         procedure.set_attribution("Antigravity", "Antigravity", "2025")
@@ -724,7 +857,10 @@ class BlueprintMakerGimpPlugin(Gimp.PlugIn):
         procedure.add_boolean_argument(
             "open-result",
             "Abrir resultado",
-            "Abre a nova imagem automaticamente quando houver interface grafica.",
+            (
+                "Abre a nova imagem automaticamente quando houver interface "
+                "grafica."
+            ),
             True,
             GObject.ParamFlags.READWRITE,
         )
@@ -739,26 +875,58 @@ class BlueprintMakerGimpPlugin(Gimp.PlugIn):
 
     def run(self, procedure, run_mode, image, drawables, config, run_data):
         if not drawables or len(drawables) != 1:
-            _show_error("Selecione exatamente uma camada para extrair os sprites.")
-            return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
+            _show_error(
+                "Selecione exatamente uma camada para extrair os sprites."
+            )
+            return procedure.new_return_values(
+                Gimp.PDBStatusType.EXECUTION_ERROR,
+                None,
+            )
 
-        if run_mode == Gimp.RunMode.INTERACTIVE and not _run_configuration_dialog(config, drawables[0]):
+        interactive_cancelled = (
+            run_mode == Gimp.RunMode.INTERACTIVE
+            and not _run_configuration_dialog(config, drawables[0])
+        )
+        if interactive_cancelled:
             return procedure.new_return_values(Gimp.PDBStatusType.CANCEL, None)
 
-        layout_hint = (config.get_property("layout-hint") or "").strip().lower()
-        if layout_hint and not _choice_is_valid(layout_hint, {"2x2", "2x3", "3x2"}):
+        layout_hint = (
+            (config.get_property("layout-hint") or "").strip().lower()
+        )
+        if layout_hint and not _choice_is_valid(
+            layout_hint,
+            {"2x2", "2x3", "3x2"},
+        ):
             _show_error("O layout deve ser vazio, 2x2, 2x3 ou 3x2.")
-            return procedure.new_return_values(Gimp.PDBStatusType.CALLING_ERROR, None)
+            return procedure.new_return_values(
+                Gimp.PDBStatusType.CALLING_ERROR,
+                None,
+            )
 
         upscale = (config.get_property("upscale") or "none").strip().lower()
         if not _choice_is_valid(upscale, {"none", "fsrcnn", "edsr"}):
             _show_error("O upscale deve ser none, fsrcnn ou edsr.")
-            return procedure.new_return_values(Gimp.PDBStatusType.CALLING_ERROR, None)
+            return procedure.new_return_values(
+                Gimp.PDBStatusType.CALLING_ERROR,
+                None,
+            )
 
-        output_mode = (config.get_property("output-mode") or "separate-images").strip().lower()
-        if not _choice_is_valid(output_mode, {"separate-images", "layered-image"}):
-            _show_error("O modo de saida deve ser separate-images ou layered-image.")
-            return procedure.new_return_values(Gimp.PDBStatusType.CALLING_ERROR, None)
+        output_mode = (
+            (config.get_property("output-mode") or "separate-images")
+            .strip()
+            .lower()
+        )
+        if not _choice_is_valid(
+            output_mode,
+            {"separate-images", "layered-image"},
+        ):
+            _show_error(
+                "O modo de saida deve ser separate-images ou layered-image."
+            )
+            return procedure.new_return_values(
+                Gimp.PDBStatusType.CALLING_ERROR,
+                None,
+            )
 
         try:
             cv2, np, SpriteExtractor = _load_runtime_dependencies()
@@ -773,8 +941,13 @@ class BlueprintMakerGimpPlugin(Gimp.PlugIn):
                 upscale=upscale,
             )
             if not sprites:
-                _show_error("Nenhum sprite foi detectado com os parametros atuais.")
-                return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
+                _show_error(
+                    "Nenhum sprite foi detectado com os parametros atuais."
+                )
+                return procedure.new_return_values(
+                    Gimp.PDBStatusType.EXECUTION_ERROR,
+                    None,
+                )
 
             if output_mode == "layered-image":
                 result_images = [_create_layered_result_image(sprites, cv2)]
@@ -782,19 +955,35 @@ class BlueprintMakerGimpPlugin(Gimp.PlugIn):
                 result_images = _create_result_images(sprites, cv2)
         except RuntimeError:
             try:
-                result_images = _run_external_extraction(image, drawables[0], config)
+                result_images = _run_external_extraction(
+                    image,
+                    drawables[0],
+                    config,
+                )
             except (RuntimeError, OSError, ValueError) as exc:
                 _show_error(f"Falha ao processar a camada: {exc}")
-                return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
+                return procedure.new_return_values(
+                    Gimp.PDBStatusType.EXECUTION_ERROR,
+                    None,
+                )
 
             if not result_images:
-                _show_error("Nenhum sprite foi detectado com os parametros atuais.")
-                return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
+                _show_error(
+                    "Nenhum sprite foi detectado com os parametros atuais."
+                )
+                return procedure.new_return_values(
+                    Gimp.PDBStatusType.EXECUTION_ERROR,
+                    None,
+                )
         except (RuntimeError, OSError, ValueError) as exc:
             _show_error(f"Falha ao processar a camada: {exc}")
-            return procedure.new_return_values(Gimp.PDBStatusType.EXECUTION_ERROR, None)
+            return procedure.new_return_values(
+                Gimp.PDBStatusType.EXECUTION_ERROR,
+                None,
+            )
 
-        if bool(config.get_property("open-result")) and Gimp.Display.name() is not None:
+        should_open_result = bool(config.get_property("open-result"))
+        if should_open_result and Gimp.Display.name() is not None:
             for result_image in result_images:
                 Gimp.Display.new(result_image)
 

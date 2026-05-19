@@ -39,9 +39,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Custom
-resources/my-blueprint-maker.desktop
-
 # Local generated artifacts
 out/
 out_test/

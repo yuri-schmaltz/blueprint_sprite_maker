@@ -1,4 +1,4 @@
-# Diretrizes de Desenvolvimento — My Blueprint Maker
+# Diretrizes de Desenvolvimento — Blueprint Maker
 
 > Documento derivado das diretrizes comportamentais do `gabarito_ia.pdf`.
 > Estes princípios devem ser aplicados em toda interação de desenvolvimento com IA neste projeto.

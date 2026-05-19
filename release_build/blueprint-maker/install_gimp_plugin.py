@@ -12,10 +12,10 @@ import sys
 from pathlib import Path
 
 
-PLUGIN_DIRNAME = "my-blueprint-maker"
+PLUGIN_DIRNAME = "blueprint-maker"
 DEFAULT_GIMP_VERSION = "3.0"
 FILES_TO_COPY = [
-    "my-blueprint-maker.py",
+    "blueprint-maker.py",
     "extrator_sprites_gimp.py",
     "external_sprite_runner.py",
     "README.md",
@@ -153,7 +153,7 @@ def install_plugin(target_dir: Path, repo_root: Path | None = None) -> Path:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Instala o plugin My Blueprint Maker na pasta de plugins "
+        description="Instala o plugin Blueprint Maker na pasta de plugins "
         "do GIMP 3."
     )
     parser.add_argument(

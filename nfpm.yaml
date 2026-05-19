@@ -1,4 +1,4 @@
-name: "my-blueprint-maker"
+name: "blueprint-maker"
 arch: "amd64"
 platform: "linux"
 version: "1.0.0"
@@ -10,11 +10,11 @@ vendor: "Yuri Schmaltz"
 homepage: "https://github.com/yuri-schmaltz/blueprint_plugin"
 license: "GPL-3.0-only"
 contents:
-  - src: ./dist/my-blueprint-maker-bin
-    dst: /usr/bin/my-blueprint-maker
+  - src: ./dist/blueprint-maker-bin
+    dst: /usr/bin/blueprint-maker
     file_info:
       mode: 0755
-  - src: ./resources/my-blueprint-maker.desktop
-    dst: /usr/share/applications/my-blueprint-maker.desktop
+  - src: ./resources/blueprint-maker.desktop
+    dst: /usr/share/applications/blueprint-maker.desktop
   - src: ./resources/icon.png
-    dst: /usr/share/icons/hicolor/256x256/apps/my-blueprint-maker.png
+    dst: /usr/share/icons/hicolor/256x256/apps/blueprint-maker.png
