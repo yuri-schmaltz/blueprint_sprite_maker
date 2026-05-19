@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 
+from core.runtime_config import resolve_helper_python_command
 import gi
 
 gi.require_version("Gegl", "0.4")
@@ -25,7 +26,6 @@ from gi.repository import (  # noqa: E402
     GLib,
     Gtk,
 )
-
 
 PROCEDURE_NAME = "python-fu-blueprint-maker-extract-sprites"
 RGBA_FORMAT = "R'G'B'A u8"
@@ -82,12 +82,6 @@ def _show_error(message: str):
 
 def _choice_is_valid(value: str, allowed_values):
     return value in allowed_values
-
-
-def _load_runtime_config() -> dict:
-    if not RUNTIME_CONFIG_PATH.exists():
-        return {}
-    return json.loads(RUNTIME_CONFIG_PATH.read_text(encoding="utf-8"))
 
 
 def _load_runtime_dependencies():
@@ -421,13 +415,12 @@ def _run_external_preview(
     params: dict,
     preview_kind: str,
 ):
-    runtime_config = _load_runtime_config()
-    helper_python = Path(runtime_config.get("helper_python", ""))
+    helper_command = resolve_helper_python_command(RUNTIME_CONFIG_PATH)
 
-    if not helper_python.exists():
+    if not helper_command:
         raise RuntimeError(
-            "Nao foi encontrado um Python externo configurado para gerar "
-            "a preview."
+            "Nao foi encontrado um Python externo configurado nem um "
+            "fallback valido para gerar a preview."
         )
 
     with tempfile.TemporaryDirectory(
@@ -439,7 +432,7 @@ def _run_external_preview(
         width, height = _save_drawable_png(drawable, input_path)
 
         command = [
-            str(helper_python),
+            *helper_command,
             str(EXTERNAL_RUNNER_PATH),
             "--input",
             str(input_path),
@@ -711,14 +704,13 @@ def _run_external_extraction(
     drawable: Gimp.Drawable,
     config,
 ):
-    runtime_config = _load_runtime_config()
-    helper_python = Path(runtime_config.get("helper_python", ""))
+    helper_command = resolve_helper_python_command(RUNTIME_CONFIG_PATH)
 
-    if not helper_python.exists():
+    if not helper_command:
         raise RuntimeError(
-            "Nao foi encontrado um Python externo configurado para executar "
-            "a extracao. Reinstale o plugin pelo repositorio para atualizar "
-            "plugin_runtime_config.json."
+            "Nao foi encontrado um Python externo configurado nem um "
+            "fallback valido para executar a extracao. Reinstale o plugin "
+            "pelo repositorio para atualizar plugin_runtime_config.json."
         )
     if not EXTERNAL_RUNNER_PATH.exists():
         raise RuntimeError(
@@ -735,7 +727,7 @@ def _run_external_extraction(
         width, height = _save_drawable_png(drawable, input_path)
 
         command = [
-            str(helper_python),
+            *helper_command,
             str(EXTERNAL_RUNNER_PATH),
             "--input",
             str(input_path),

@@ -13,6 +13,9 @@ from pathlib import Path
 
 
 PLUGIN_DIRNAME = "blueprint-maker"
+LEGACY_PLUGIN_DIRNAMES = (
+    "my-blueprint-maker",
+)
 DEFAULT_GIMP_VERSION = "3.0"
 FILES_TO_COPY = [
     "blueprint-maker.py",
@@ -122,6 +125,30 @@ def write_runtime_config(target_dir: Path) -> Path:
     return config_path
 
 
+def remove_legacy_plugin_dirs(target_dir: Path) -> list[Path]:
+    removed_dirs: list[Path] = []
+    plugins_root = target_dir.parent
+
+    for legacy_dirname in LEGACY_PLUGIN_DIRNAMES:
+        legacy_dir = plugins_root / legacy_dirname
+        if legacy_dir == target_dir or not legacy_dir.is_dir():
+            continue
+        if not _looks_like_blueprint_plugin_dir(legacy_dir):
+            continue
+
+        shutil.rmtree(legacy_dir)
+        removed_dirs.append(legacy_dir)
+
+    return removed_dirs
+
+
+def _looks_like_blueprint_plugin_dir(plugin_dir: Path) -> bool:
+    return (plugin_dir / "extrator_sprites_gimp.py").exists() and any(
+        (plugin_dir / launcher_name).exists()
+        for launcher_name in ("blueprint-maker.py", "my-blueprint-maker.py")
+    )
+
+
 def install_plugin(target_dir: Path, repo_root: Path | None = None) -> Path:
     repo_root = repo_root or get_repo_root()
     missing_items = collect_missing_items(repo_root)
@@ -130,6 +157,8 @@ def install_plugin(target_dir: Path, repo_root: Path | None = None) -> Path:
         raise FileNotFoundError(
             f"Itens obrigatorios ausentes no repositorio: {missing}"
         )
+
+    remove_legacy_plugin_dirs(target_dir)
 
     target_dir.mkdir(parents=True, exist_ok=True)
 

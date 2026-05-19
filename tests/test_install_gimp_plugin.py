@@ -103,6 +103,35 @@ def test_install_plugin_replaces_existing_directories(tmp_path):
         assert not (target_dir / dir_name / "stale.txt").exists()
 
 
+def test_install_plugin_removes_legacy_blueprint_directory(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    target_dir = tmp_path / install_gimp_plugin.PLUGIN_DIRNAME
+    legacy_dir = tmp_path / install_gimp_plugin.LEGACY_PLUGIN_DIRNAMES[0]
+    legacy_dir.mkdir()
+
+    for file_name in install_gimp_plugin.FILES_TO_COPY:
+        (repo_root / file_name).write_text(file_name, encoding="utf-8")
+
+    for dir_name in install_gimp_plugin.DIRECTORIES_TO_COPY:
+        source_dir = repo_root / dir_name
+        source_dir.mkdir()
+        (source_dir / "fresh.txt").write_text("fresh", encoding="utf-8")
+
+    (legacy_dir / "extrator_sprites_gimp.py").write_text(
+        "legacy",
+        encoding="utf-8",
+    )
+    (legacy_dir / "my-blueprint-maker.py").write_text(
+        "legacy",
+        encoding="utf-8",
+    )
+
+    install_gimp_plugin.install_plugin(target_dir, repo_root=repo_root)
+
+    assert not legacy_dir.exists()
+
+
 def test_release_bundle_includes_plugin_installer():
     repo_root = Path(__file__).resolve().parents[1]
     release_dir = (
@@ -117,3 +146,37 @@ def test_release_bundle_includes_plugin_installer():
     source_text = source_installer.read_text(encoding="utf-8")
 
     assert bundled_text == source_text
+
+
+def test_release_bundle_runtime_config_is_not_platform_pinned():
+    repo_root = Path(__file__).resolve().parents[1]
+    runtime_config_path = (
+        repo_root
+        / "release_build"
+        / install_gimp_plugin.PLUGIN_DIRNAME
+        / install_gimp_plugin.RUNTIME_CONFIG_FILENAME
+    )
+
+    runtime_config = json.loads(
+        runtime_config_path.read_text(encoding="utf-8")
+    )
+
+    assert runtime_config == {"helper_python": ""}
+
+
+def test_release_bundle_runtime_helper_matches_source():
+    repo_root = Path(__file__).resolve().parents[1]
+    source_helper = repo_root / "core" / "runtime_config.py"
+    bundled_helper = (
+        repo_root
+        / "release_build"
+        / install_gimp_plugin.PLUGIN_DIRNAME
+        / "core"
+        / "runtime_config.py"
+    )
+
+    assert bundled_helper.read_text(
+        encoding="utf-8"
+    ) == source_helper.read_text(
+        encoding="utf-8"
+    )
