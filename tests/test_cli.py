@@ -1,9 +1,9 @@
 """
 Tests for main.py CLI argument parsing
 """
+
 import subprocess
 import sys
-from pathlib import Path
 
 
 def test_cli_version():
@@ -11,10 +11,10 @@ def test_cli_version():
     result = subprocess.run(
         [sys.executable, "main.py", "--version"],
         capture_output=True,
-        text=True
+        text=True,
     )
     assert result.returncode == 0
-    assert "Blueprint Maker 1.1.0" in result.stdout
+    assert "Blueprint Maker 1.1.1" in result.stdout
 
 
 def test_cli_help():
@@ -22,7 +22,7 @@ def test_cli_help():
     result = subprocess.run(
         [sys.executable, "main.py", "--help"],
         capture_output=True,
-        text=True
+        text=True,
     )
     assert result.returncode == 0
     assert "usage: main.py" in result.stdout
@@ -33,7 +33,7 @@ def test_cli_invalid_arg():
     result = subprocess.run(
         [sys.executable, "main.py", "--invalid-flag"],
         capture_output=True,
-        text=True
+        text=True,
     )
     assert result.returncode != 0
     assert "unrecognized arguments: --invalid-flag" in result.stderr

@@ -1,4 +1,5 @@
 import json
+import platform
 from pathlib import Path
 
 import install_gimp_plugin
@@ -9,9 +10,11 @@ def test_parse_version_dir_handles_numeric_directories():
     assert install_gimp_plugin._parse_version_dir(Path("3.0")) == (3, 0)
     assert install_gimp_plugin._parse_version_dir(Path("dev")) is None
 
-import platform
 
-def test_get_default_gimp_plugins_root_uses_latest_profile(monkeypatch, tmp_path):
+def test_get_default_gimp_plugins_root_uses_latest_profile(
+    monkeypatch,
+    tmp_path,
+):
     fake_home = tmp_path / "home"
     monkeypatch.setattr(platform, "system", lambda: "Windows")
     gimp_root = fake_home / "AppData" / "Roaming" / "GIMP"
@@ -41,7 +44,10 @@ def test_install_plugin_copies_required_structure(tmp_path):
     target_dir = tmp_path / "target"
 
     for file_name in install_gimp_plugin.FILES_TO_COPY:
-        (repo_root / file_name).write_text(f"content for {file_name}", encoding="utf-8")
+        (repo_root / file_name).write_text(
+            f"content for {file_name}",
+            encoding="utf-8",
+        )
 
     for dir_name in install_gimp_plugin.DIRECTORIES_TO_COPY:
         source_dir = repo_root / dir_name
@@ -51,14 +57,19 @@ def test_install_plugin_copies_required_structure(tmp_path):
         pycache_dir.mkdir()
         (pycache_dir / "ignored.pyc").write_bytes(b"cache")
 
-    installed_dir = install_gimp_plugin.install_plugin(target_dir, repo_root=repo_root)
+    installed_dir = install_gimp_plugin.install_plugin(
+        target_dir,
+        repo_root=repo_root,
+    )
 
     assert installed_dir == target_dir
     for file_name in install_gimp_plugin.FILES_TO_COPY:
         assert (target_dir / file_name).exists()
 
     runtime_config = json.loads(
-        (target_dir / install_gimp_plugin.RUNTIME_CONFIG_FILENAME).read_text(encoding="utf-8")
+        (target_dir / install_gimp_plugin.RUNTIME_CONFIG_FILENAME).read_text(
+            encoding="utf-8"
+        )
     )
     assert runtime_config["helper_python"]
 
@@ -90,3 +101,19 @@ def test_install_plugin_replaces_existing_directories(tmp_path):
     for dir_name in install_gimp_plugin.DIRECTORIES_TO_COPY:
         assert (target_dir / dir_name / "fresh.txt").exists()
         assert not (target_dir / dir_name / "stale.txt").exists()
+
+
+def test_release_bundle_includes_plugin_installer():
+    repo_root = Path(__file__).resolve().parents[1]
+    release_dir = (
+        repo_root / "release_build" / install_gimp_plugin.PLUGIN_DIRNAME
+    )
+    source_installer = repo_root / "install_gimp_plugin.py"
+    bundled_installer = release_dir / "install_gimp_plugin.py"
+
+    assert release_dir.is_dir()
+    assert bundled_installer.exists()
+    bundled_text = bundled_installer.read_text(encoding="utf-8")
+    source_text = source_installer.read_text(encoding="utf-8")
+
+    assert bundled_text == source_text

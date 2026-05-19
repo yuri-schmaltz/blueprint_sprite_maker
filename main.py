@@ -7,18 +7,25 @@ Data: 2026-01-29
 import sys
 import argparse
 
+
 def main():
     """Função principal"""
-    parser = argparse.ArgumentParser(description="Blueprint Maker - Extrator de Sprites para Projetos 3D")
+    parser = argparse.ArgumentParser(
+        description="Blueprint Maker - Extrator de Sprites para Projetos 3D"
+    )
     parser.add_argument("path", nargs="?", help="Caminho para o sprite sheet")
-    parser.add_argument("--version", action="version", version="Blueprint Maker 1.1.0")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="Blueprint Maker 1.1.1",
+    )
     args = parser.parse_args()
 
     from PyQt6.QtWidgets import QApplication
     from gui.main_window import MainWindow
-    
+
     app = QApplication(sys.argv)
-    
+
     # Aplicar Tema Escuro Moderno
     app.setStyleSheet("""
         QMainWindow, QWidget {
@@ -108,13 +115,13 @@ def main():
             width: 20px;
         }
     """)
-    
+
     app.setStyle("Fusion")
-    
+
     # Criar e exibir janela principal
     window = MainWindow(initial_path=args.path)
     window.show()
-    
+
     sys.exit(app.exec())
 
 
