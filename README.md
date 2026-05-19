@@ -8,6 +8,8 @@
 
 Plugin para GIMP 3+ com reaproveitamento do extrator de sprites original do projeto.
 
+Versao atual: 1.1.1.
+
 ## Preview
 
 ![Preview do fluxo de extracao](docs/assets/preview.png)
@@ -32,20 +34,45 @@ O projeto agora funciona principalmente como um plugin do GIMP 3+ para detectar 
 
 - Python 3.8 ou superior
 - GIMP 3+ com suporte a plugins Python
-- Dependencias Python do projeto instaladas no ambiente usado pelo GIMP
+- Dependencias Python do projeto instaladas no Python que sera usado pelo plugin
 
-### Plugin do GIMP 3+
+### Instalar a partir da release
 
-1. Instale as dependencias do projeto:
+1. Extraia o conteudo da release em uma pasta local.
+2. Instale as dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Instale automaticamente na pasta de plugins do GIMP 3:
+3. Execute o instalador que ja acompanha a release:
 
 ```bash
 python install_gimp_plugin.py
+```
+
+O pacote de release agora inclui o `install_gimp_plugin.py`, entao nao e mais necessario voltar ao repositorio para concluir a instalacao.
+
+### Plugin do GIMP 3+
+
+1. Clone este repositorio ou abra a pasta do projeto.
+
+2. Instale as dependencias do projeto:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Instale automaticamente na pasta de plugins do GIMP 3:
+
+```bash
+python install_gimp_plugin.py
+```
+
+Se voce instalou o projeto como pacote Python, tambem pode usar:
+
+```bash
+my-blueprint-maker-install-gimp
 ```
 
 Ou, se preferir, copie manualmente a pasta do projeto para a pasta de plugins do GIMP 3.
@@ -58,11 +85,11 @@ No Windows, o caminho mais comum e:
 
 O instalador agora tenta detectar automaticamente a versao de perfil mais recente, como 3.0 ou 3.2.
 
-3. Garanta que os arquivos my-blueprint-maker.py, extrator_sprites_gimp.py e external_sprite_runner.py estejam dentro dessa pasta junto com os pacotes core, components e gui.
+4. Garanta que os arquivos `my-blueprint-maker.py`, `extrator_sprites_gimp.py`, `external_sprite_runner.py` e `install_gimp_plugin.py` estejam dentro da pasta da release ou do repositorio. Ao instalar no GIMP, a pasta de plugin precisa conter `my-blueprint-maker.py`, `extrator_sprites_gimp.py`, `external_sprite_runner.py`, `README.md`, `requirements.txt` e os pacotes `core`, `components`, `gui`, `locales` e `resources`.
 
-Se o Python do GIMP nao tiver numpy/opencv disponiveis, o plugin usa automaticamente o Python externo configurado durante a instalacao para executar a extracao.
+Se o Python do GIMP nao tiver numpy/opencv disponiveis, o plugin usa automaticamente o Python externo configurado durante a instalacao para executar a extracao. Essa configuracao fica registrada em `plugin_runtime_config.json`.
 
-4. Reinicie o GIMP.
+5. Reinicie o GIMP.
 
 ### Destino customizado
 
@@ -71,6 +98,8 @@ Se quiser instalar em outra pasta de plugins ou testar sem tocar no perfil padra
 ```bash
 python install_gimp_plugin.py --target C:/caminho/para/plug-ins/my-blueprint-maker
 ```
+
+O parametro `--target` e util para testar a instalacao sem alterar o perfil padrao do GIMP.
 
 ## Uso no GIMP
 
@@ -96,6 +125,12 @@ O modo Qt antigo ainda pode ser iniciado com:
 
 ```bash
 python main.py
+```
+
+Se o projeto estiver instalado como pacote, o entry point equivalente e:
+
+```bash
+my-blueprint-maker
 ```
 
 ## Tipos de sprite sheet suportados
@@ -131,10 +166,24 @@ Muitos sprites falsos:
 O menu nao aparece no GIMP:
 - Confirme que o GIMP 3 foi instalado com suporte a plugins Python
 - Rode python install_gimp_plugin.py para copiar a estrutura correta do plugin
+- Se estiver usando a release empacotada, confirme que o arquivo install_gimp_plugin.py veio junto no pacote extraido
 - Confirme que o plugin foi instalado no perfil ativo do GIMP, por exemplo %APPDATA%/GIMP/3.2/plug-ins/my-blueprint-maker
 - Confirme que os arquivos my-blueprint-maker.py e extrator_sprites_gimp.py estao em uma pasta de plugins lida pelo GIMP
 - Verifique se as dependencias Python do projeto estao disponiveis para o Python embutido do GIMP
 - Se numpy/opencv nao estiverem disponiveis no Python do GIMP, reinstale o plugin a partir do repositorio para atualizar o arquivo plugin_runtime_config.json com o Python externo correto
+
+## Estrutura esperada da release
+
+Uma release valida deve conter pelo menos:
+
+- `install_gimp_plugin.py`
+- `my-blueprint-maker.py`
+- `extrator_sprites_gimp.py`
+- `external_sprite_runner.py`
+- `README.md`
+- `requirements.txt`
+- `plugin_runtime_config.json`
+- pastas `components`, `core`, `gui`, `locales` e `resources`
 
 ## Licenca
 

@@ -41,3 +41,13 @@ MANIFEST
 
 # Custom
 resources/my-blueprint-maker.desktop
+
+# Local generated artifacts
+out/
+out_test/
+output_test/
+temp_out/
+temp_input.raw
+temp_input.rgba
+test_input.rgba
+release_build/*.zip
