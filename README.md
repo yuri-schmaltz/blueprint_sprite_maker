@@ -101,6 +101,66 @@ python install_gimp_plugin.py --target C:/caminho/para/plug-ins/blueprint-maker
 
 O parametro `--target` e util para testar a instalacao sem alterar o perfil padrao do GIMP.
 
+### Instalacao inteligente (auto-deteccao)
+
+O instalador detecta sozinho, sem configuracao manual:
+
+- **Todos os perfis do GIMP** (nativo, Flatpak, Snap, multiplas versoes 3.0/3.2) e usa o mais recente como padrao
+- **Todos os Pythons disponiveis** com `cv2`/`numpy`/`Pillow` ja instalados (venv do sistema, virtualenvs, poetry, uv) e escolhe o melhor para o helper
+- **Faz backup automatico** da instalacao anterior antes de sobrescrever (use `--no-backup` para pular)
+- **Detecta se o GIMP esta aberto** e avisa que precisa reiniciar
+- **Instala as dependencias via pip** com `--auto-deps` quando o helper nao tem `numpy`/`opencv-python`
+- **Detecta perfil especifico** com `--gimp-profile 3.0` (ou 3.2) quando ha varios
+
+Comandos disponiveis:
+
+```bash
+# instalar (comportamento padrao, igual ao comando antigo)
+python install_gimp_plugin.py
+
+# instalar com deps automaticas via pip
+python install_gimp_plugin.py --auto-deps
+
+# simular sem alterar nada
+python install_gimp_plugin.py --dry-run
+
+# ver o estado atual da instalacao (texto formatado)
+python install_gimp_plugin.py status
+
+# mesmo status, em JSON para scripts/CI
+python install_gimp_plugin.py status --json
+
+# remover o plugin instalado
+python install_gimp_plugin.py uninstall
+
+# instalar em outro perfil GIMP (3.0, 3.2, ...)
+python install_gimp_plugin.py --gimp-profile 3.0
+```
+
+Exemplo de saida de `status`:
+
+```text
+Blueprint Maker - Status da instalacao
+
+Alvo:             /home/yuri/.config/GIMP/3.2/plug-ins/blueprint-maker
+Origem (repo):    /home/yuri/Documentos/blueprint_sprite_maker
+Versao fonte:     1.1.1
+Versao instalada: 1.1.1  (OK)
+
+Instalacao: presente
+Arquivos: OK
+Diretorios: OK
+
+Runtime config: helper_python = /home/yuri/.local/share/uv/.../python
+  versao: 3.12.3
+  modulos OK: numpy 2.2.1, opencv-python 4.10.0, Pillow 10.2.0
+
+Perfis GIMP detectados:
+  - 3.2 (gravavel) em /home/yuri/.config/GIMP/3.2
+  - 3.2 (gravavel) em /home/yuri/.var/app/org.gimp.GIMP/config/GIMP/3.2
+  - 3.0 (gravavel) em /home/yuri/.config/GIMP/3.0
+```
+
 ## Uso no GIMP
 
 Depois de reiniciar o GIMP, abra uma imagem com sprite sheet, selecione a camada desejada e execute:
